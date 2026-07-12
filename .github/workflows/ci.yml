@@ -1,0 +1,27 @@
+name: ci
+
+# PR / main への push でコード品質(lint + test)を検証する。
+# 外部 API を叩かずモックでテストするため secrets 不要 → fork PR でも安全に走る。
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read # 最小権限
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+      - name: golangci-lint (go vet 内包 + lint)
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2 # .golangci.yml(version: "2")と揃える
+      - name: go test
+        run: go test ./... # httptest でモック(ネットワーク非依存・secrets 不要)
