@@ -489,6 +489,14 @@ Ports & Adapters 採用の主目的の一つがテスト容易性。ネットワ
 
 ---
 
+## 開発フロー
+
+本リポジトリは Design Doc 駆動。実装は Design Doc のセクション / マイルストーン単位で
+PR に分割し、main 直 push は禁止・CI green を merge 条件とする。PR 分割方針・PR 本文の
+必須項目・レビュー観点・secret 取扱いの詳細は [`CONTRIBUTING.md`](../../CONTRIBUTING.md) を参照。
+
+---
+
 ## Milestones
 
 1. **M1 – PoC 疎通**: Go 雛形（`cmd/batch` + Ports & Adapters）+ `Quote0Sink.Send` + `workflow_dispatch` で `Hello World` 実機表示。（本 Design Doc の主対象）
