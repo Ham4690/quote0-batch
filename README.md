@@ -27,7 +27,7 @@ internal/
 
 ## セットアップ
 
-必要なもの: Go 1.23 以上。
+必要なもの: Go 1.25 以上。
 
 ```sh
 cp .env.example .env    # 値を埋める(.env はコミット禁止)
