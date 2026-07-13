@@ -6,6 +6,10 @@ import (
 	"context"
 	"time"
 
+	// tzdata をバイナリへ埋め込む(約 +450KB)。OS の tzdata に依存しないため、
+	// 将来 scratch/distroless コンテナへ移しても LoadLocation が失敗しない。
+	_ "time/tzdata"
+
 	"github.com/Ham4690/quote0-batch/internal/domain"
 )
 
@@ -26,6 +30,9 @@ func mustLoadJST() *time.Location {
 type HelloWorldSource struct {
 	now func() time.Time // DI: テストで時刻を固定する
 }
+
+// ContentSource 充足のコンパイル時表明。シグネチャがズレたらここでビルドが落ちる。
+var _ domain.ContentSource = (*HelloWorldSource)(nil)
 
 // NewHelloWorldSource は現在時刻に time.Now を用いる HelloWorldSource を生成する。
 func NewHelloWorldSource() *HelloWorldSource {

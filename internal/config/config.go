@@ -24,7 +24,8 @@ func Load() (Config, error) {
 	cfg := Config{
 		APIKey:    os.Getenv("DOT_API_KEY"),
 		SerialNum: os.Getenv("SERIAL_NUM"),
-		BaseURL:   os.Getenv("DOT_BASE_URL"),
+		// 末尾スラッシュを除去して正規化(URL 連結時の "//" を防止)。
+		BaseURL: strings.TrimSuffix(os.Getenv("DOT_BASE_URL"), "/"),
 	}
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = defaultBaseURL

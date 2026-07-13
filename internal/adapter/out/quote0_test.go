@@ -125,9 +125,12 @@ func TestQuote0Sink_Send_ErrorDoesNotLeakSecrets(t *testing.T) {
 	}
 }
 
-func TestNewQuote0Sink_NilClientUsesDefault(t *testing.T) {
+func TestNewQuote0Sink_NilClientHasTimeout(t *testing.T) {
 	sink := NewQuote0Sink(testConfig(), nil)
-	if sink.client != http.DefaultClient {
-		t.Error("nil client 時に http.DefaultClient が使われていない")
+	if sink.client == http.DefaultClient {
+		t.Error("nil client 時に http.DefaultClient(Timeout 無制限)が使われている")
+	}
+	if sink.client.Timeout <= 0 {
+		t.Errorf("nil client 時の Timeout = %v, 正の値を期待(ハング防止)", sink.client.Timeout)
 	}
 }
