@@ -8,10 +8,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Ham4690/quote0-batch/internal/config"
 	"github.com/Ham4690/quote0-batch/internal/domain"
 )
+
+// defaultTimeout は Text API 呼び出しの上限時間。
+// リトライ導入(M2)以前の最低限の防御として M1 から必須とする。
+const defaultTimeout = 30 * time.Second
 
 // Quote0Sink は quote/0 Text API への ContentSink 実装。
 type Quote0Sink struct {
@@ -19,10 +24,15 @@ type Quote0Sink struct {
 	client *http.Client // DI: テストで Transport(RoundTripper)を差し替える
 }
 
-// NewQuote0Sink は Quote0Sink を生成する。client が nil の場合は http.DefaultClient を使う。
+// ContentSink 充足のコンパイル時表明。シグネチャがズレたらここでビルドが落ちる。
+var _ domain.ContentSink = (*Quote0Sink)(nil)
+
+// NewQuote0Sink は Quote0Sink を生成する。client が nil の場合はタイムアウト付き
+// client を使う。http.DefaultClient は Timeout ゼロ(無制限)のため使わない —
+// API ハング時に scheduler のジョブ上限まで待ち続けるのを防ぐ。
 func NewQuote0Sink(cfg config.Config, client *http.Client) *Quote0Sink {
 	if client == nil {
-		client = http.DefaultClient
+		client = &http.Client{Timeout: defaultTimeout}
 	}
 	return &Quote0Sink{cfg: cfg, client: client}
 }
