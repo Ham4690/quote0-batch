@@ -27,6 +27,12 @@ func TestLoad(t *testing.T) {
 			wantBase: "https://example.test",
 		},
 		{
+			name:     "DOT_BASE_URL の末尾スラッシュは除去される",
+			env:      map[string]string{"DOT_API_KEY": "key123", "SERIAL_NUM": "SN1", "DOT_BASE_URL": "https://example.test/"},
+			wantErr:  false,
+			wantBase: "https://example.test",
+		},
+		{
 			name:    "DOT_API_KEY 欠落で fail-fast",
 			env:     map[string]string{"SERIAL_NUM": "SN1"},
 			wantErr: true,
