@@ -1,0 +1,7 @@
+version: 2
+# Actions を SHA pin しているため、更新 PR を自動生成して pin の腐敗を防ぐ。
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
