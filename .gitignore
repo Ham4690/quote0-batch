@@ -1,0 +1,9 @@
+# secret を含む環境変数ファイル(コミット禁止)
+.env
+*.local
+
+# Go ビルド成果物
+/bin/
+*.exe
+*.test
+*.out

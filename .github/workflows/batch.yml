@@ -1,0 +1,33 @@
+name: batch
+
+# quote/0 Text API へ実送信するワークフロー。secrets を使うため
+# workflow_dispatch / schedule のみで起動する(PR では走らせない)。
+#
+# M1(PoC)では workflow_dispatch のみで疎通確認する。実機表示が確認できたら
+# M2 で下記 schedule のコメントアウトを外し毎時 cron を有効化する。
+on:
+  workflow_dispatch: # 手動実行(初期疎通確認用)
+  # schedule:
+  #   - cron: "0 * * * *"   # 毎時 0 分(UTC 基準だが 1 時間間隔なので時刻ずれは無影響)
+
+permissions:
+  contents: read # 最小権限
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment: production # Environment secrets + 承認ゲートを活用
+    timeout-minutes: 5 # PoC 送信は数十秒想定。ハング時の課金/枠消費を遮断
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: "1.25"
+          cache: false # 外部依存(go.sum)未生成のためキャッシュ無効
+      - name: send to quote/0 Text API
+        run: go run ./cmd/batch
+        env:
+          DOT_API_KEY: ${{ secrets.DOT_API_KEY }}
+          SERIAL_NUM: ${{ secrets.SERIAL_NUM }}
+          # DOT_BASE_URL は既定値を使うため未設定。JST は time.LoadLocation で
+          # 明示取得するため TZ 環境変数は不要。

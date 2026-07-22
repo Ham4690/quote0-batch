@@ -1,0 +1,11 @@
+# golangci-lint v2 設定。standard プリセット(errcheck / govet /
+# ineffassign / staticcheck / unused)を有効化する。
+version: "2"
+
+linters:
+  default: standard
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
