@@ -25,14 +25,15 @@
 ### 要件
 
 - **API**: [`weather.tsukumijima.net`](https://weather.tsukumijima.net/)（livedoor 天気互換・データ元は気象庁）
-- **地点**: 東京（`area_code: 130010`）
-- **取得**: `GET https://weather.tsukumijima.net/api/forecast?city=130010`（認証不要）
+- **地点**: 東京（`city=130010`）を既定とし、**地点コードは env 化**（GitHub Actions Variables に登録）。
+- **取得**: `GET https://weather.tsukumijima.net/api/forecast?city={CITY_CODE}`（認証不要）
 - **頻度**: 毎日 0 時（JST）に取得し、**リクエスト日（当日）の予報**を表示
 - **表示項目**:
   - 対象日付 `MM/DD(曜日)`
   - 最低気温 / 最高気温
   - 降水確率（0-6 / 6-12 / 12-18 / 18-24 の 4 時間帯すべて）
   - 天気（`telop`: 例「晴れ」「雨のち曇」）
+  - タップ遷移先は **Yahoo 天気**（`link` も env 化。後述）
 
 ### API レスポンス構造（前提知識）
 
@@ -79,7 +80,7 @@
 
 ## Non-Goals
 
-- 東京以外の複数地点対応（地点コードは当面 `130010` 固定）。
+- 複数地点の同時対応（地点コードは env で切替可能だが、運用は単一地点＝既定・東京）。
 - 明日以降（週間）予報の表示。**当日のみ**。
 - 天気アイコン / 画像（`image.url`）連携。`telop` テキストのみ。
 - リトライ・失敗通知の本格化（M2 の範囲）。
@@ -125,10 +126,29 @@ internal/
 ### 取得仕様
 
 - **エンドポイント**: `GET {WEATHER_BASE_URL}/api/forecast?city={CITY_CODE}`
-  - `CITY_CODE`: 既定 `130010`（東京）。地点変更の余地を残すため `config` の任意 env とし、未設定なら既定値。
-  - `WEATHER_BASE_URL`: 既定 `https://weather.tsukumijima.net`（`DOT_BASE_URL` と同様に正規化）。
 - **認証**: 不要（**新たな secret は増えない**）。
 - **タイムアウト**: 既存の `http.Client{Timeout: 30s}` を流用（out-adapter と同方針）。
+
+#### 設定（env）
+
+天気連携で追加する env は**すべて非秘匿**。GitHub Actions では **Variables**（Secrets ではない）に登録する。`config.Config` に読み込み口を追加し、未設定は既定値。
+
+| 変数 | 内容 | 既定値 | 秘匿 |
+| --- | --- | --- | --- |
+| `CITY_CODE` | 天気 API の地点コード | `130010`（東京） | No |
+| `WEATHER_BASE_URL` | 天気 API ベース URL（末尾スラッシュ正規化） | `https://weather.tsukumijima.net` | No |
+| `WEATHER_LINK_URL` | 表示の `link` 遷移先（Yahoo 天気ページ） | API レスポンスの `link`（気象庁） | No |
+
+- 非秘匿のため Secrets ではなく **Actions Variables**（`vars.CITY_CODE` 等）で注入する。
+- `CITY_CODE` を変えたら、対応する `WEATHER_LINK_URL`（Yahoo の該当地点ページ）も併せて更新する運用とする（[link の方針](#link-遷移先yahoo-天気)参照）。
+
+#### link 遷移先（Yahoo 天気）
+
+表示のタップ遷移先は **Yahoo 天気**とする。ただし **Yahoo 天気は独自の地域コード体系**で、天気 API の JMA 地点コード（`130010`）とは対応しない。
+
+例: 東京地方 = `https://weather.yahoo.co.jp/weather/jp/13/4410.html`（`13`=東京都 / `4410`=東京地方）。
+
+「JMA コード → Yahoo URL」の対応表を持つのは保守コストになるため、**link は `WEATHER_LINK_URL` env として明示指定**する（`CITY_CODE` とセットで運用者が設定）。未設定時は API レスポンスの `link`（気象庁ページ）へフォールバック。
 
 ### 当日エントリの選択ロジック
 
@@ -205,10 +225,10 @@ type RainChance struct{ T0006, T0612, T1218, T1824 string } // "50%" / "--%"
 
 | フィールド | 内容 | 例 |
 | --- | --- | --- |
-| `title` | 天気概況（`telop`） | `雨のち曇` |
+| `title` | 天気概況（`telop`）。上限超過は rune 単位でスライス | `雨のち曇` |
 | `message` | 日付・気温・降水確率（複数行） | 下記 |
 | `signature` | 生成日時（JST） | `2026年07月24日00:00` |
-| `link` | API の `link`（気象庁予報ページ） | `https://www.jma.go.jp/...` |
+| `link` | `WEATHER_LINK_URL`（Yahoo 天気）／未設定時は API の `link` | `https://weather.yahoo.co.jp/weather/jp/13/4410.html` |
 | `refreshNow` | 即時表示 | `true` |
 
 `message` 例（欠損は `--`）:
@@ -222,6 +242,23 @@ type RainChance struct{ T0006, T0612, T1218, T1824 string } // "50%" / "--%"
 - **日付**: `date` を `time.Parse("2006-01-02", ...)` で JST 解釈 → `01/02` 整形 + 曜日を日本語 map（`[]string{"日","月","火","水","木","金","土"}[t.Weekday()]`）。
 - **気温**: `*int` が `nil` なら `--`、それ以外は数値 + `℃`。
 - **降水確率**: 4 帯を `"--%"` 含めそのまま並べる。
+
+#### `title`（telop）の長さ対策
+
+quote/0 の `title` 表示幅を超える `telop`（例「雨時々曇一時雷を伴い…」）は、e-ink 上で見切れる。一旦 **rune 単位でスライス**し、超過時は末尾に省略記号を付す（例 `fugafugafugafu…`）。
+
+```go
+func clipRunes(s string, max int) string {
+	r := []rune(s)          // マルチバイト安全に文字数で切る（byte 単位は禁止）
+	if len(r) <= max {
+		return s
+	}
+	return string(r[:max]) + "…"
+}
+```
+
+- **上限値**は quote/0 の `title` 仕様（最大表示文字数）に合わせて定数化する。**正確な上限は実機で確認**し、確定するまで暫定値を置く（[Open Questions](#open-questions) に残す）。
+- スライスは表示専用。ログ・エラーには影響させない。
 
 ### 欠損値ハンドリング方針
 
@@ -286,7 +323,7 @@ GitHub Actions の cron は UTC 基準のため `15` を指定。JST は `time.L
 
 ### セキュリティ
 
-- 天気 API は**認証不要 → 新たな secret を追加しない**。`CITY_CODE` / `WEATHER_BASE_URL` は非秘匿。
+- 天気 API は**認証不要 → 新たな secret を追加しない**。`CITY_CODE` / `WEATHER_BASE_URL` / `WEATHER_LINK_URL` は非秘匿 → Secrets ではなく Actions **Variables** で注入。
 - 既存の `DOT_API_KEY` / `SERIAL_NUM` の扱いは [0001](./0001-initial-setup.md) のまま。
 
 ### 可観測性 / 失敗時挙動
@@ -319,9 +356,14 @@ GitHub Actions の cron は UTC 基準のため `15` を指定。JST は `time.L
 
 ---
 
+## Resolved Decisions
+
+- **地点コード**: `CITY_CODE` を **env 化**（既定 `130010`）。GitHub Actions **Variables** に登録して注入する。
+- **`link` 遷移先**: **Yahoo 天気**。Yahoo は独自地域コードで JMA コードと非対応のため、`WEATHER_LINK_URL` env で明示指定（`CITY_CODE` とセット運用）。未設定時は API の `link`（気象庁）へフォールバック。
+- **当日気温 `null`**: 現状のまま `--` 表示で対応。「明日」予報へのフォールバックは行わない（頻発時に再検討）。
+- **長い `telop`**: `title` を rune 単位でスライスし、超過時は末尾 `…`。
+
 ## Open Questions
 
-- `CITY_CODE` を env 化するか、定数固定とするか（現案: 任意 env・既定 `130010`）。
-- `link` の遷移先を API の気象庁ページのままにするか、Yahoo 天気（東京）等の見やすいページに差し替えるか。
-- 当日気温 `null` の発生頻度（0 時実行での実測）。頻発するなら「明日」予報へのフォールバック表示を検討。
-- `telop` が長い場合の `title` / `message` の配置調整（e-ink 表示幅の実機確認）。
+- quote/0 `title`（および `message`）の最大表示文字数 = スライス上限値。**実機で確認**して定数化する。
+- 当日気温 `null` の実発生頻度（0 時実行での実測）。頻発するなら「明日」フォールバックを再検討。
