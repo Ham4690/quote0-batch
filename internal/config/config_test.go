@@ -14,36 +14,36 @@ func TestLoad(t *testing.T) {
 		wantSerial string
 	}{
 		{
-			name:       "必須変数が揃えば成功し BaseURL は既定値",
+			name:       "Load は必須変数が揃うと成功し BaseURL に既定値を設定する",
 			env:        map[string]string{"DOT_API_KEY": "key123", "SERIAL_NUM": "SN000112345678"},
 			wantErr:    false,
 			wantBase:   defaultBaseURL,
 			wantSerial: "SN000112345678",
 		},
 		{
-			name:     "DOT_BASE_URL 指定時はそれを使う",
+			name:     "Load は DOT_BASE_URL 指定時にその値を BaseURL に使う",
 			env:      map[string]string{"DOT_API_KEY": "key123", "SERIAL_NUM": "SN1", "DOT_BASE_URL": "https://example.test"},
 			wantErr:  false,
 			wantBase: "https://example.test",
 		},
 		{
-			name:     "DOT_BASE_URL の末尾スラッシュは除去される",
+			name:     "Load は DOT_BASE_URL 末尾のスラッシュを除去する",
 			env:      map[string]string{"DOT_API_KEY": "key123", "SERIAL_NUM": "SN1", "DOT_BASE_URL": "https://example.test/"},
 			wantErr:  false,
 			wantBase: "https://example.test",
 		},
 		{
-			name:    "DOT_API_KEY 欠落で fail-fast",
+			name:    "Load は DOT_API_KEY が欠落すると起動に失敗する",
 			env:     map[string]string{"SERIAL_NUM": "SN1"},
 			wantErr: true,
 		},
 		{
-			name:    "SERIAL_NUM 欠落で fail-fast",
+			name:    "Load は SERIAL_NUM が欠落すると起動に失敗する",
 			env:     map[string]string{"DOT_API_KEY": "key123"},
 			wantErr: true,
 		},
 		{
-			name:    "両方欠落で fail-fast",
+			name:    "Load は必須変数が両方欠落すると起動に失敗する",
 			env:     map[string]string{},
 			wantErr: true,
 		},
@@ -80,35 +80,39 @@ func TestLoad(t *testing.T) {
 }
 
 func TestLoad_ErrorHidesSecretValues(t *testing.T) {
-	for _, k := range []string{"DOT_API_KEY", "SERIAL_NUM", "DOT_BASE_URL"} {
-		t.Setenv(k, "")
-	}
-	t.Setenv("DOT_API_KEY", "supersecretkey")
+	t.Run("Load はエラーメッセージに秘匿値を含めない", func(t *testing.T) {
+		for _, k := range []string{"DOT_API_KEY", "SERIAL_NUM", "DOT_BASE_URL"} {
+			t.Setenv(k, "")
+		}
+		t.Setenv("DOT_API_KEY", "supersecretkey")
 
-	_, err := Load()
-	if err == nil {
-		t.Fatal("エラーを期待したが nil")
-	}
-	if strings.Contains(err.Error(), "supersecretkey") {
-		t.Errorf("エラーメッセージに秘匿値が含まれている: %v", err)
-	}
+		_, err := Load()
+		if err == nil {
+			t.Fatal("エラーを期待したが nil")
+		}
+		if strings.Contains(err.Error(), "supersecretkey") {
+			t.Errorf("エラーメッセージに秘匿値が含まれている: %v", err)
+		}
+	})
 }
 
 func TestMaskedSerial(t *testing.T) {
-	tests := []struct {
-		serial string
-		want   string
-	}{
-		{"SN000112345678", "**********5678"},
-		{"12345", "*2345"},
-		{"1234", "****"},
-		{"12", "**"},
-		{"", ""},
-	}
-	for _, tt := range tests {
-		c := Config{SerialNum: tt.serial}
-		if got := c.MaskedSerial(); got != tt.want {
-			t.Errorf("MaskedSerial(%q) = %q, want %q", tt.serial, got, tt.want)
+	t.Run("MaskedSerial は末尾4桁のみ残して他をマスクする", func(t *testing.T) {
+		tests := []struct {
+			serial string
+			want   string
+		}{
+			{"SN000112345678", "**********5678"},
+			{"12345", "*2345"},
+			{"1234", "****"},
+			{"12", "**"},
+			{"", ""},
 		}
-	}
+		for _, tt := range tests {
+			c := Config{SerialNum: tt.serial}
+			if got := c.MaskedSerial(); got != tt.want {
+				t.Errorf("MaskedSerial(%q) = %q, want %q", tt.serial, got, tt.want)
+			}
+		}
+	})
 }
