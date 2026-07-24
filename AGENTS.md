@@ -88,7 +88,7 @@ func TestLoad_ErrorHidesSecretValues(t *testing.T) {
 - **エラーは握り潰さない**。文脈を付けて `fmt.Errorf("...: %w", err)` でラップし、`errors.Is/As` で判定する。
 - **外部境界は interface(port)経由**。HTTP クライアントはテスト用に差し替え可能な形で受け取る
   (例: `NewQuote0Sink(cfg, client)`、nil 時は Timeout 付き既定クライアント)。
-- **時刻はテスト可能に**。`time.Now` を直接呼ばず注入する(例: `HelloWorldSource{now: func() time.Time}`)。
+- **時刻はテスト可能に**。`time.Now` を直接呼ばず注入する(例: `WeatherSource{now: func() time.Time}`)。
   表示はJSTへ明示変換する。
 - コメント・ドキュメントは日本語。
 

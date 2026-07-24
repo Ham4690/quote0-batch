@@ -1,0 +1,56 @@
+{
+  "publicTime": "2026-07-24T05:00:00+09:00",
+  "title": "東京都 東京 の天気",
+  "forecasts": [
+    {
+      "date": "2026-07-24",
+      "dateLabel": "今日",
+      "telop": "晴時々曇",
+      "temperature": {
+        "min": { "celsius": null, "fahrenheit": null },
+        "max": { "celsius": null, "fahrenheit": null }
+      },
+      "chanceOfRain": {
+        "T00_06": "--%",
+        "T06_12": "--%",
+        "T12_18": "--%",
+        "T18_24": "50%"
+      }
+    },
+    {
+      "date": "2026-07-25",
+      "dateLabel": "明日",
+      "telop": "晴れ",
+      "temperature": {
+        "min": { "celsius": "25", "fahrenheit": "77" },
+        "max": { "celsius": "34", "fahrenheit": "93.2" }
+      },
+      "chanceOfRain": {
+        "T00_06": "0%",
+        "T06_12": "0%",
+        "T12_18": "10%",
+        "T18_24": "10%"
+      }
+    },
+    {
+      "date": "2026-07-26",
+      "dateLabel": "明後日",
+      "telop": "曇り",
+      "temperature": {
+        "min": { "celsius": "24", "fahrenheit": "75.2" },
+        "max": { "celsius": "31", "fahrenheit": "87.8" }
+      },
+      "chanceOfRain": {
+        "T00_06": "20%",
+        "T06_12": "20%",
+        "T12_18": "30%",
+        "T18_24": "30%"
+      }
+    }
+  ],
+  "location": {
+    "prefecture": "東京都",
+    "city": "東京"
+  },
+  "link": "https://www.jma.go.jp/bosai/forecast/#area_code=130000"
+}

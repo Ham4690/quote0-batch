@@ -3,12 +3,11 @@ name: batch
 # quote/0 Text API へ実送信するワークフロー。secrets を使うため
 # workflow_dispatch / schedule のみで起動する(PR では走らせない)。
 #
-# M1(PoC)では workflow_dispatch のみで疎通確認する。実機表示が確認できたら
-# M2 で下記 schedule のコメントアウトを外し毎時 cron を有効化する。
+# M3(天気連携)で毎日 0 時(JST)実行に変更。当日の天気予報を表示する。
 on:
-  workflow_dispatch: # 手動実行(初期疎通確認用)
-  # schedule:
-  #   - cron: "0 * * * *"   # 毎時 0 分(UTC 基準だが 1 時間間隔なので時刻ずれは無影響)
+  workflow_dispatch: # 手動実行(疎通確認用)
+  schedule:
+    - cron: "0 15 * * *" # UTC 15:00 = JST 00:00(毎日)。JST は time.LoadLocation で明示取得
 
 permissions:
   contents: read # 最小権限
@@ -31,3 +30,9 @@ jobs:
           SERIAL_NUM: ${{ secrets.SERIAL_NUM }}
           # DOT_BASE_URL は既定値を使うため未設定。JST は time.LoadLocation で
           # 明示取得するため TZ 環境変数は不要。
+          #
+          # 天気連携(M3)の設定。すべて非秘匿のため Secrets ではなく Variables で注入。
+          # 未設定なら code 側の既定値(CITY_CODE=130010 / WEATHER_BASE_URL=tsukumijima)を使う。
+          CITY_CODE: ${{ vars.CITY_CODE }}
+          WEATHER_BASE_URL: ${{ vars.WEATHER_BASE_URL }}
+          WEATHER_LINK_URL: ${{ vars.WEATHER_LINK_URL }}
