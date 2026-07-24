@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	neturl "net/url"
 	"strconv"
 	"strings"
 	"time"
 
-	// tzdata をバイナリへ埋め込む。OS の tzdata に依存せず LoadLocation を成功させる
-	// (helloworld adapter と同方針)。
+	// tzdata をバイナリへ埋め込む。OS の tzdata に依存せず LoadLocation を成功させる。
 	_ "time/tzdata"
 
 	"github.com/Ham4690/quote0-batch/internal/config"
@@ -42,6 +43,10 @@ var weekdayJP = [...]string{"日", "月", "火", "水", "木", "金", "土"}
 // defaultTimeout は天気 API 呼び出しの上限時間(out-adapter と同方針)。
 const defaultTimeout = 30 * time.Second
 
+// maxBodyBytes は decode するレスポンスボディの上限。天気 API のレスポンスは
+// 数 KB 程度のため、時間(defaultTimeout)に加えバイト数でも防御する。
+const maxBodyBytes = 1 << 20 // 1MiB
+
 // WeatherSource は天気 API(weather.tsukumijima.net)を叩く ContentSource 実装。
 type WeatherSource struct {
 	cfg    config.Config
@@ -64,7 +69,7 @@ func NewSource(cfg config.Config, client *http.Client) *WeatherSource {
 // Build は当日の天気予報を取得し、quote/0 表示用の TextPayload を組み立てる。
 // 気温欠損(null)や "--%" は正常系として表示継続する。構造異常はエラーを返す。
 func (s *WeatherSource) Build(ctx context.Context) (domain.TextPayload, error) {
-	url := fmt.Sprintf("%s/api/forecast?city=%s", s.cfg.WeatherBaseURL, s.cfg.CityCode)
+	url := fmt.Sprintf("%s/api/forecast?city=%s", s.cfg.WeatherBaseURL, neturl.QueryEscape(s.cfg.CityCode))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return domain.TextPayload{}, fmt.Errorf("weather: リクエスト生成に失敗: %w", err)
@@ -81,7 +86,7 @@ func (s *WeatherSource) Build(ctx context.Context) (domain.TextPayload, error) {
 	}
 
 	var resp apiResponse
-	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+	if err := json.NewDecoder(io.LimitReader(res.Body, maxBodyBytes)).Decode(&resp); err != nil {
 		return domain.TextPayload{}, fmt.Errorf("weather: レスポンスの decode に失敗: %w", err)
 	}
 	if err := resp.Validate(); err != nil {

@@ -117,6 +117,25 @@ func TestToForecast(t *testing.T) {
 			t.Fatal("エラーを期待したが nil")
 		}
 	})
+
+	t.Run("toForecast は非数値 celsius を欠損(nil)扱いし空白付き数値はパースする", func(t *testing.T) {
+		bad := "abc"
+		padded := " 33 "
+		f, err := toForecast(forecast{
+			Date:        "2026-07-24",
+			Telop:       "晴れ",
+			Temperature: temperature{Min: tempValue{Celsius: &bad}, Max: tempValue{Celsius: &padded}},
+		}, "")
+		if err != nil {
+			t.Fatalf("予期せぬエラー: %v", err)
+		}
+		if f.TempMinC != nil {
+			t.Errorf("TempMinC = %v, want nil(非数値は欠損)", *f.TempMinC)
+		}
+		if f.TempMaxC == nil || *f.TempMaxC != 33 {
+			t.Errorf("TempMaxC = %v, want 33(前後空白は TrimSpace)", f.TempMaxC)
+		}
+	})
 }
 
 func TestToTextPayload(t *testing.T) {
@@ -251,6 +270,49 @@ func TestWeatherSource_Build(t *testing.T) {
 	t.Run("WeatherSource.Build は forecasts 空レスポンスでエラーにする", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(`{"forecasts":[],"link":"x"}`))
+		}))
+		defer srv.Close()
+
+		cfg := config.Config{CityCode: "130010", WeatherBaseURL: srv.URL}
+		src := &WeatherSource{cfg: cfg, client: srv.Client(), now: fixedNow}
+
+		if _, err := src.Build(context.Background()); err == nil {
+			t.Fatal("エラーを期待したが nil")
+		}
+	})
+
+	t.Run("WeatherSource.Build は不正 JSON ボディで decode エラーにする", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`{"forecasts":`)) // 途中で切れた壊れた JSON
+		}))
+		defer srv.Close()
+
+		cfg := config.Config{CityCode: "130010", WeatherBaseURL: srv.URL}
+		src := &WeatherSource{cfg: cfg, client: srv.Client(), now: fixedNow}
+
+		if _, err := src.Build(context.Background()); err == nil {
+			t.Fatal("エラーを期待したが nil")
+		}
+	})
+
+	t.Run("WeatherSource.Build は当日エントリ不在でエラーにする", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// date も dateLabel も当日(2026-07-24)に一致しない。
+			_, _ = w.Write([]byte(`{"forecasts":[{"date":"2026-07-25","dateLabel":"明日","telop":"晴れ"}],"link":"x"}`))
+		}))
+		defer srv.Close()
+
+		cfg := config.Config{CityCode: "130010", WeatherBaseURL: srv.URL}
+		src := &WeatherSource{cfg: cfg, client: srv.Client(), now: fixedNow}
+
+		if _, err := src.Build(context.Background()); err == nil {
+			t.Fatal("エラーを期待したが nil")
+		}
+	})
+
+	t.Run("WeatherSource.Build は当日 telop 空でエラーにする", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`{"forecasts":[{"date":"2026-07-24","dateLabel":"今日","telop":""}],"link":"x"}`))
 		}))
 		defer srv.Close()
 
