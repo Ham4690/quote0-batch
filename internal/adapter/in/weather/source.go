@@ -31,7 +31,7 @@ func mustLoadJST() *time.Location {
 
 // titleMaxRunes は quote/0 の title 表示幅に合わせた暫定上限(文字数)。
 // 正確な上限は実機確認で確定する(Design Doc 0002 の Open Questions 参照)。
-const titleMaxRunes = 12
+const titleMaxRunes = 11
 
 // dateLabelToday は当日エントリを示す API 固定ラベル。
 const dateLabelToday = "今日"
