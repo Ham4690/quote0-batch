@@ -79,6 +79,63 @@ func TestLoad(t *testing.T) {
 	}
 }
 
+func TestLoad_WeatherDefaults(t *testing.T) {
+	weatherKeys := []string{"CITY_CODE", "WEATHER_BASE_URL", "WEATHER_LINK_URL"}
+
+	t.Run("Load は天気系の env が未設定なら既定値を設定する", func(t *testing.T) {
+		for _, k := range []string{"DOT_API_KEY", "SERIAL_NUM", "DOT_BASE_URL"} {
+			t.Setenv(k, "")
+		}
+		for _, k := range weatherKeys {
+			t.Setenv(k, "")
+		}
+		t.Setenv("DOT_API_KEY", "key123")
+		t.Setenv("SERIAL_NUM", "SN1")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("予期せぬエラー: %v", err)
+		}
+		if cfg.CityCode != defaultCityCode {
+			t.Errorf("CityCode = %q, want %q", cfg.CityCode, defaultCityCode)
+		}
+		if cfg.WeatherBaseURL != defaultWeatherBaseURL {
+			t.Errorf("WeatherBaseURL = %q, want %q", cfg.WeatherBaseURL, defaultWeatherBaseURL)
+		}
+		if cfg.WeatherLinkURL != "" {
+			t.Errorf("WeatherLinkURL = %q, want 空文字(未設定)", cfg.WeatherLinkURL)
+		}
+	})
+
+	t.Run("Load は天気系の env 指定時にその値を使い WEATHER_BASE_URL 末尾スラッシュを除去する", func(t *testing.T) {
+		for _, k := range []string{"DOT_API_KEY", "SERIAL_NUM", "DOT_BASE_URL"} {
+			t.Setenv(k, "")
+		}
+		for _, k := range weatherKeys {
+			t.Setenv(k, "")
+		}
+		t.Setenv("DOT_API_KEY", "key123")
+		t.Setenv("SERIAL_NUM", "SN1")
+		t.Setenv("CITY_CODE", "270000")
+		t.Setenv("WEATHER_BASE_URL", "https://example.test/")
+		t.Setenv("WEATHER_LINK_URL", "https://weather.yahoo.co.jp/weather/jp/13/4410.html")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("予期せぬエラー: %v", err)
+		}
+		if cfg.CityCode != "270000" {
+			t.Errorf("CityCode = %q, want %q", cfg.CityCode, "270000")
+		}
+		if cfg.WeatherBaseURL != "https://example.test" {
+			t.Errorf("WeatherBaseURL = %q, want %q", cfg.WeatherBaseURL, "https://example.test")
+		}
+		if cfg.WeatherLinkURL != "https://weather.yahoo.co.jp/weather/jp/13/4410.html" {
+			t.Errorf("WeatherLinkURL = %q", cfg.WeatherLinkURL)
+		}
+	})
+}
+
 func TestLoad_ErrorHidesSecretValues(t *testing.T) {
 	t.Run("Load はエラーメッセージに秘匿値を含めない", func(t *testing.T) {
 		for _, k := range []string{"DOT_API_KEY", "SERIAL_NUM", "DOT_BASE_URL"} {
