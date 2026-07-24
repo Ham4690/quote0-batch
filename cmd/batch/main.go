@@ -7,7 +7,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/Ham4690/quote0-batch/internal/adapter/in"
+	"github.com/Ham4690/quote0-batch/internal/adapter/in/weather"
 	"github.com/Ham4690/quote0-batch/internal/adapter/out"
 	"github.com/Ham4690/quote0-batch/internal/application"
 	"github.com/Ham4690/quote0-batch/internal/config"
@@ -21,7 +21,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	src := in.NewHelloWorldSource()
+	src := weather.NewSource(cfg, nil) // M3: 天気 API(M1 の HelloWorldSource から差し替え)
 	sink := out.NewQuote0Sink(cfg, nil)
 
 	if err := application.RunBatch(ctx, src, sink); err != nil {
