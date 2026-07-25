@@ -105,7 +105,7 @@ func (s *WeatherSource) Build(ctx context.Context) (domain.TextPayload, error) {
 		link = resp.Link
 	}
 
-	w, err := toForecast(entry, link)
+	w, err := toForecast(entry, resp.Location.City, link)
 	if err != nil {
 		return domain.TextPayload{}, err
 	}
@@ -145,13 +145,15 @@ func selectToday(r apiResponse, today string) (forecast, error) {
 
 // toForecast は DTO の 1 日分を domain.Forecast へ変換する。
 // date は JST 解釈、celsius 文字列は *int(空/null は nil)に変換する。
-func toForecast(f forecast, link string) (domain.Forecast, error) {
+// city は API レスポンスの地点名(link と同様に Build 層から引き回す)。
+func toForecast(f forecast, city, link string) (domain.Forecast, error) {
 	d, err := time.ParseInLocation("2006-01-02", f.Date, jst)
 	if err != nil {
 		return domain.Forecast{}, fmt.Errorf("weather: date のパースに失敗 (%q): %w", f.Date, err)
 	}
 	return domain.Forecast{
 		Date:     d,
+		City:     city,
 		Telop:    f.Telop,
 		TempMinC: parseCelsius(f.Temperature.Min.Celsius),
 		TempMaxC: parseCelsius(f.Temperature.Max.Celsius),
@@ -186,8 +188,14 @@ func toTextPayload(w domain.Forecast, signature string) domain.TextPayload {
 	rainLine := fmt.Sprintf("降水 0-6 %s / 6-12 %s / 12-18 %s / 18-24 %s",
 		w.ChanceOfRain.T0006, w.ChanceOfRain.T0612, w.ChanceOfRain.T1218, w.ChanceOfRain.T1824)
 
+	// title は「地点名 + 天気概況」。地点名が空なら telop のみへフォールバックする。
+	title := w.Telop
+	if w.City != "" {
+		title = w.City + " " + w.Telop
+	}
+
 	return domain.TextPayload{
-		Title:      clipRunes(w.Telop, titleMaxRunes),
+		Title:      clipRunes(title, titleMaxRunes),
 		Message:    strings.Join([]string{dateLine, tempLine, rainLine}, "\n"),
 		Signature:  signature,
 		Link:       w.Link,
