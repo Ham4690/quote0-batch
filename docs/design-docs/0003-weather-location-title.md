@@ -62,12 +62,13 @@
 
 地点名は API レスポンスのトップレベル `location.city` から取得し、`link` と同じく Build 層から mapper へ引き回して `domain.Forecast` に持たせる。表示整形時に天気概況（`telop`）の前へ `地点名 + 半角スペース` を付与し、既存の `clipRunes` で上限クリップする。
 
-```
-apiResponse.Location.City ─┐
-                           ├─▶ toForecast(entry, city, link) ─▶ domain.Forecast{ City, Telop, ... }
-resp.Link ─────────────────┘                                              │
-                                                                          ▼
-                                              toTextPayload ─▶ TextPayload{ Title: "東京 雨のち曇", ... }
+```mermaid
+flowchart LR
+    City["apiResponse.Location.City"] --> ToForecast["toForecast(entry, city, link)"]
+    Link["resp.Link"] --> ToForecast
+    ToForecast --> Forecast["domain.Forecast{ City, Telop, ... }"]
+    Forecast --> ToTextPayload["toTextPayload"]
+    ToTextPayload --> Payload["TextPayload{ Title: 東京 雨のち曇, ... }"]
 ```
 
 ### 型設計（3 層の差分）
