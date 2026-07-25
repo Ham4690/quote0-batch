@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Ham4690/quote0-batch/internal/config"
+	"github.com/Ham4690/quote0-batch/internal/domain"
 )
 
 // loadFixture は testdata の JSON を apiResponse へ decode するヘルパ。
@@ -180,6 +181,19 @@ func TestToTextPayload(t *testing.T) {
 			t.Errorf("Message =\n%q\nwant\n%q", p.Message, want)
 		}
 	})
+
+	t.Run("toTextPayload は地点名が空なら title を telop のみにする", func(t *testing.T) {
+		// City 欠損時のフォールバック。「地点名 + 天気概況」ではなく telop 単体になる。
+		w := domain.Forecast{
+			Date:  time.Date(2026, 7, 24, 0, 0, 0, 0, jst),
+			City:  "", // 地点名なし
+			Telop: "晴れ",
+		}
+		p := toTextPayload(w, "sig")
+		if p.Title != "晴れ" {
+			t.Errorf("Title = %q, want %q(地点名なしは telop のみ)", p.Title, "晴れ")
+		}
+	})
 }
 
 func TestWeatherSource_Build(t *testing.T) {
@@ -214,6 +228,25 @@ func TestWeatherSource_Build(t *testing.T) {
 		}
 		if p.Signature != "2026年07月24日00:00" {
 			t.Errorf("Signature = %q", p.Signature)
+		}
+	})
+
+	t.Run("WeatherSource.Build は location 欠損なら title を telop のみにする", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// location キーを含まないレスポンス。地点名は取得できない。
+			_, _ = w.Write([]byte(`{"forecasts":[{"date":"2026-07-24","dateLabel":"今日","telop":"晴れ"}],"link":"x"}`))
+		}))
+		defer srv.Close()
+
+		cfg := config.Config{CityCode: "130010", WeatherBaseURL: srv.URL}
+		src := &WeatherSource{cfg: cfg, client: srv.Client(), now: fixedNow}
+
+		p, err := src.Build(context.Background())
+		if err != nil {
+			t.Fatalf("予期せぬエラー: %v", err)
+		}
+		if p.Title != "晴れ" {
+			t.Errorf("Title = %q, want %q(location 欠損は telop のみ)", p.Title, "晴れ")
 		}
 	})
 
