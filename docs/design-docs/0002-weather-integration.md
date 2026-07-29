@@ -225,7 +225,7 @@ type RainChance struct{ T0006, T0612, T1218, T1824 string } // "50%" / "--%"
 
 | フィールド | 内容 | 例 |
 | --- | --- | --- |
-| `title` | 天気概況（`telop`）。上限超過は rune 単位でスライス | `雨のち曇` |
+| `title` | 地点名 + 天気概況（`地点名 + telop`）。上限超過は rune 単位でスライス。地点名の併記は [0003](./0003-weather-location-title.md) で追加（未取得時は `telop` のみ） | `東京 雨のち曇` |
 | `message` | 日付・気温・降水確率（複数行） | 下記 |
 | `signature` | 生成日時（JST） | `2026年07月24日00:00` |
 | `link` | `WEATHER_LINK_URL`（Yahoo 天気）／未設定時は API の `link` | `https://weather.yahoo.co.jp/weather/jp/13/4410.html` |
@@ -246,6 +246,8 @@ type RainChance struct{ T0006, T0612, T1218, T1824 string } // "50%" / "--%"
 #### `title`（telop）の長さ対策
 
 quote/0 の `title` 表示幅を超える `telop`（例「雨時々曇一時雷を伴い…」）は、e-ink 上で見切れる。一旦 **rune 単位でスライス**し、超過時は末尾に省略記号を付す（例 `fugafugafugafu…`）。
+
+> 注: [0003](./0003-weather-location-title.md) 以降、`title` は「地点名 + 天気概況」（例「東京 雨のち曇」）となる。地点名は API レスポンスの `location.city` から取得し、`地点名 + " " + telop` を組み立てた上で、本節のスライス（`clipRunes`）を最後に適用する。地点名が未取得（空）の場合は従来どおり `telop` のみを表示する。
 
 ```go
 func clipRunes(s string, max int) string {
@@ -361,7 +363,7 @@ GitHub Actions の cron は UTC 基準のため `15` を指定。JST は `time.L
 - **地点コード**: `CITY_CODE` を **env 化**（既定 `130010`）。GitHub Actions **Variables** に登録して注入する。
 - **`link` 遷移先**: **Yahoo 天気**。Yahoo は独自地域コードで JMA コードと非対応のため、`WEATHER_LINK_URL` env で明示指定（`CITY_CODE` とセット運用）。未設定時は API の `link`（気象庁）へフォールバック。
 - **当日気温 `null`**: 現状のまま `--` 表示で対応。「明日」予報へのフォールバックは行わない（頻発時に再検討）。
-- **長い `telop`**: `title` を rune 単位でスライスし、超過時は末尾 `…`。
+- **長い `telop`**: `title` を rune 単位でスライスし、超過時は末尾 `…`。なお `title` の書式は [0003](./0003-weather-location-title.md) で「地点名 + telop」（例「東京 雨のち曇」）へ拡張済み。
 
 ## Open Questions
 
