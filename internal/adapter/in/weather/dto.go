@@ -8,7 +8,14 @@ import "errors"
 // null / "--%" 等の欠損を受けられるよう気温は文字列ポインタで受ける。
 type apiResponse struct {
 	Forecasts []forecast `json:"forecasts"`
+	Location  location   `json:"location"`
 	Link      string     `json:"link"`
+}
+
+// location は API レスポンスの地点情報。city を表示地点名に使う。
+// 欠損時は zero value(空文字)となり、表示は telop のみへフォールバックする。
+type location struct {
+	City string `json:"city"` // 例「東京」
 }
 
 type forecast struct {

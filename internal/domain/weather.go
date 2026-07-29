@@ -6,6 +6,7 @@ import "time"
 // 欠損値(気温未発表)は nil で表現する。
 type Forecast struct {
 	Date         time.Time  // 対象日 0:00 JST
+	City         string     // 地点名(例「東京」)。空なら未取得
 	Telop        string     // 天気概況(例「雨のち曇」)
 	TempMinC     *int       // 最低気温(℃)。nil = 欠損
 	TempMaxC     *int       // 最高気温(℃)。nil = 欠損
