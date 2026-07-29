@@ -73,9 +73,12 @@ func TestSelectToday(t *testing.T) {
 func TestToForecast(t *testing.T) {
 	t.Run("toForecast は celsius 文字列を *int に変換し link を引き継ぐ", func(t *testing.T) {
 		r := loadFixture(t, "tokyo.json")
-		f, err := toForecast(r.Forecasts[0], "https://example.test/link")
+		f, err := toForecast(r.Forecasts[0], r.Location.City, "https://example.test/link")
 		if err != nil {
 			t.Fatalf("予期せぬエラー: %v", err)
+		}
+		if f.City != "東京" {
+			t.Errorf("City = %q, want %q", f.City, "東京")
 		}
 		if f.TempMinC == nil || *f.TempMinC != 26 {
 			t.Errorf("TempMinC = %v, want 26", f.TempMinC)
@@ -100,7 +103,7 @@ func TestToForecast(t *testing.T) {
 
 	t.Run("toForecast は celsius が null なら気温を nil にする", func(t *testing.T) {
 		r := loadFixture(t, "tokyo_null_temp.json")
-		f, err := toForecast(r.Forecasts[0], "")
+		f, err := toForecast(r.Forecasts[0], r.Location.City, "")
 		if err != nil {
 			t.Fatalf("予期せぬエラー: %v", err)
 		}
@@ -113,7 +116,7 @@ func TestToForecast(t *testing.T) {
 	})
 
 	t.Run("toForecast は date が不正だとエラーを返す", func(t *testing.T) {
-		if _, err := toForecast(forecast{Date: "not-a-date", Telop: "晴れ"}, ""); err == nil {
+		if _, err := toForecast(forecast{Date: "not-a-date", Telop: "晴れ"}, "", ""); err == nil {
 			t.Fatal("エラーを期待したが nil")
 		}
 	})
@@ -125,7 +128,7 @@ func TestToForecast(t *testing.T) {
 			Date:        "2026-07-24",
 			Telop:       "晴れ",
 			Temperature: temperature{Min: tempValue{Celsius: &bad}, Max: tempValue{Celsius: &padded}},
-		}, "")
+		}, "", "")
 		if err != nil {
 			t.Fatalf("予期せぬエラー: %v", err)
 		}
@@ -141,13 +144,13 @@ func TestToForecast(t *testing.T) {
 func TestToTextPayload(t *testing.T) {
 	t.Run("toTextPayload は気温・降水確率を整形し曜日付き日付を出す", func(t *testing.T) {
 		r := loadFixture(t, "tokyo.json")
-		f, err := toForecast(r.Forecasts[0], "https://example.test/link")
+		f, err := toForecast(r.Forecasts[0], r.Location.City, "https://example.test/link")
 		if err != nil {
 			t.Fatalf("予期せぬエラー: %v", err)
 		}
 		p := toTextPayload(f, "2026年07月24日00:00")
 
-		if p.Title != "雨のち曇" {
+		if p.Title != "東京 雨のち曇" {
 			t.Errorf("Title = %q", p.Title)
 		}
 		if !p.RefreshNow {
@@ -167,7 +170,7 @@ func TestToTextPayload(t *testing.T) {
 
 	t.Run("toTextPayload は欠損気温を -- で表示する", func(t *testing.T) {
 		r := loadFixture(t, "tokyo_null_temp.json")
-		f, err := toForecast(r.Forecasts[0], "")
+		f, err := toForecast(r.Forecasts[0], r.Location.City, "")
 		if err != nil {
 			t.Fatalf("予期せぬエラー: %v", err)
 		}
@@ -206,7 +209,7 @@ func TestWeatherSource_Build(t *testing.T) {
 		if gotQuery != "city=130010" {
 			t.Errorf("query = %q, want city=130010", gotQuery)
 		}
-		if p.Title != "雨のち曇" {
+		if p.Title != "東京 雨のち曇" {
 			t.Errorf("Title = %q", p.Title)
 		}
 		if p.Signature != "2026年07月24日00:00" {
