@@ -89,7 +89,7 @@ Batch Runtime 内部は Ports & Adapters 構成: `in-adapter(取得) → RunBatc
 
 ```
 quote0-batch/
-├── docs/design_docs/               # 本 Design Doc 群
+├── docs/design-docs/               # 本 Design Doc 群
 ├── cmd/
 │   └── batch/
 │       └── main.go                 # 合成ルート（DI 配線 → RunBatch 実行）

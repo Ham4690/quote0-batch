@@ -1,0 +1,45 @@
+name: claude
+
+# issue / PR 上で @claude とメンションすると Claude が起動し、
+# リポジトリと AGENTS.md の規約を読んでブランチ+PR を作成・修正する。
+# 会話は issue / PR コメントで継続する(on-demand のみ。cron 自動起動はしない)。
+#
+# 事前準備(リポジトリ管理者が一度だけ実施):
+#   1. Claude GitHub App を導入      https://github.com/apps/claude
+#   2. `claude setup-token` で OAuth トークンを生成(Pro/Max サブスク)
+#   3. Settings → Secrets → Actions に CLAUDE_CODE_OAUTH_TOKEN として登録
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    # @claude を含む発言のみ起動し、無駄な実行を避ける。
+    # write 権限チェックは claude-code-action 側が内部で実施する。
+    if: >
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20 # 暴走時の Actions 枠消費/課金を遮断(ci.yml と同方針)
+    permissions:
+      contents: write # ブランチ作成・コミット
+      pull-requests: write # PR 作成・コメント
+      issues: write # issue 返信
+      id-token: write # OIDC(action 内部で使用)
+      actions: read # 自身のワークフロー実行状況の参照
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

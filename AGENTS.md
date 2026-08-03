@@ -2,7 +2,7 @@
 
 LLM / 自動化エージェントがこのリポジトリで作業する際のガイド。人間の開発者にも適用する。
 本ファイルは規約の索引を兼ねる。詳細は [`README.md`](README.md) / [`CONTRIBUTING.md`](CONTRIBUTING.md) /
-`docs/design_docs/` を参照する。
+`docs/design-docs/` を参照する。
 
 ## プロジェクト概要
 
@@ -28,7 +28,7 @@ internal/
 
 ## 開発フロー
 
-- **Design Doc が先、実装が後**。実装は必ず対応する `docs/design_docs/` セクションに紐づく。
+- **Design Doc が先、実装が後**。実装は必ず対応する `docs/design-docs/` セクションに紐づく。
 - **main 直 push 禁止**。全変更は作業ブランチを切り PR 経由。CI green を merge 条件とする。
 - **1 PR = 1 関心事**。ついで修正は別 PR に分ける。
 - 詳細な PR 分割方針・レビュー観点は [`CONTRIBUTING.md`](CONTRIBUTING.md) を参照。
