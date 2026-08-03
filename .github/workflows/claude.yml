@@ -43,7 +43,7 @@ jobs:
       - uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # issue 本文編集(mcp__github__issue_write)はデフォルト許可ツールに
-          # 含まれず、無人実行では未承認としてブロックされるため明示的に許可する。
+          # issue 本文編集・PR 作成・PR 概要編集はデフォルト許可ツールに含まれず、
+          # 無人実行では未承認としてブロックされるため明示的に許可する。
           claude_args: |
-            --allowedTools "mcp__github__issue_write"
+            --allowedTools "mcp__github__issue_write,mcp__github__create_pull_request,mcp__github__update_pull_request"
