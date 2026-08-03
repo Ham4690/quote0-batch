@@ -5,7 +5,7 @@
 - **Created:** 2026-07-24
 - **Last Updated:** 2026-07-24
 - **Reviewers:** TBD
-- **関連:** [0001 初期構築 Design Doc](./0001-initial-setup.md)（※ 0001 は `design_docs/` からの改称 PR がマージされ次第、本ディレクトリに同居）
+- **関連:** [0001 初期構築 Design Doc](./0001-initial-setup.md)
 
 ---
 

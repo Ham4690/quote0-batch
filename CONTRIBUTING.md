@@ -1,7 +1,7 @@
 # Contributing / 開発フロー
 
 本リポジトリは Design Doc 駆動で開発する。実装（人間 / LLM 問わず）は
-`docs/design_docs/` の設計に従い、以下のフローで PR を作成する。
+`docs/design-docs/` の設計に従い、以下のフローで PR を作成する。
 
 ## 基本原則
 
@@ -26,7 +26,7 @@ Design Doc のマイルストーン（M1/M2/M3…）とセクションを PR ス
 
 - **タイトル**: Conventional Commits 形式（`feat:` / `fix:` / `docs:` / `chore:` …）。
 - **本文に必須**:
-  - 対応 Design Doc セクションへのリンク（例: `docs/design_docs/0001-initial-setup.md#actual-design`）
+  - 対応 Design Doc セクションへのリンク（例: `docs/design-docs/0001-initial-setup.md#actual-design`）
   - このPRのスコープ（何を含み、何を含まないか）
   - 動作確認方法（テスト / 手動確認手順）
 - **スコープ外の変更を混ぜない**。ついで修正は別 PR。
@@ -48,11 +48,11 @@ Design Doc のマイルストーン（M1/M2/M3…）とセクションを PR ス
 
 - 秘匿情報はコミットしない。ローカルは `.env`（gitignore 対象）、CI は GitHub Secrets。
 - 必要な env キーは `.env.example`（値は空）で共有。
-- 詳細は `docs/design_docs/0001-initial-setup.md` の「設定 / シークレットの流れ」節を参照。
+- 詳細は `docs/design-docs/0001-initial-setup.md` の「設定 / シークレットの流れ」節を参照。
 
 ## LLM 実装者への指示テンプレ（参考）
 
-> 対象: `docs/design_docs/0001-initial-setup.md` の <セクション/マイルストーン>。
+> 対象: `docs/design-docs/0001-initial-setup.md` の <セクション/マイルストーン>。
 > スコープ: <含む範囲>。<含まない範囲> は別 PR。
 > 完了条件: `go test ./...` green、対応 Design Doc セクションを PR 本文にリンク。
 > secret を平文でコミット/出力しないこと。

@@ -4,7 +4,7 @@
 定期的に整形して表示するバッチ処理基盤。当面の連携対象は天気情報のみで、1 時間ごとに
 取得してデバイスへ表示する。
 
-設計の詳細は [`docs/design_docs/0001-initial-setup.md`](docs/design_docs/0001-initial-setup.md) を参照。
+設計の詳細は [`docs/design-docs/0001-initial-setup.md`](docs/design-docs/0001-initial-setup.md) を参照。
 開発フロー・PR 分割方針は [`CONTRIBUTING.md`](CONTRIBUTING.md) を参照。
 
 > 現在は **M1(PoC 疎通)** の段階。固定文言 `Hello World` を Text API へ送信し、実機表示を確認する。
@@ -81,4 +81,4 @@ Actions はログを自動マスクし fork PR には secrets を注入しない
 
 - [quote/0(dot.mindreset.tech)](https://dot.mindreset.tech)
 - Text API エンドポイント: `POST /api/authV2/open/device/:serialNum/text`
-- 設計判断の背景: [`docs/design_docs/0001-initial-setup.md`](docs/design_docs/0001-initial-setup.md)
+- 設計判断の背景: [`docs/design-docs/0001-initial-setup.md`](docs/design-docs/0001-initial-setup.md)
