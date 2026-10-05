@@ -66,37 +66,37 @@ func NewSource(cfg config.Config, client *http.Client) *WeatherSource {
 	return &WeatherSource{cfg: cfg, client: client, now: time.Now}
 }
 
-// Build は当日の天気予報を取得し、quote/0 表示用の TextPayload を組み立てる。
+// Build は当日の天気予報を取得し、quote/0 表示用の CanvasPayload を組み立てる。
 // 気温欠損(null)や "--%" は正常系として表示継続する。構造異常はエラーを返す。
-func (s *WeatherSource) Build(ctx context.Context) (domain.TextPayload, error) {
+func (s *WeatherSource) Build(ctx context.Context) (domain.CanvasPayload, error) {
 	url := fmt.Sprintf("%s/api/forecast?city=%s", s.cfg.WeatherBaseURL, neturl.QueryEscape(s.cfg.CityCode))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return domain.TextPayload{}, fmt.Errorf("weather: リクエスト生成に失敗: %w", err)
+		return domain.CanvasPayload{}, fmt.Errorf("weather: リクエスト生成に失敗: %w", err)
 	}
 
 	res, err := s.client.Do(req)
 	if err != nil {
-		return domain.TextPayload{}, fmt.Errorf("weather: リクエスト送信に失敗: %w", err)
+		return domain.CanvasPayload{}, fmt.Errorf("weather: リクエスト送信に失敗: %w", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return domain.TextPayload{}, fmt.Errorf("weather: forecast API failed: status=%d", res.StatusCode)
+		return domain.CanvasPayload{}, fmt.Errorf("weather: forecast API failed: status=%d", res.StatusCode)
 	}
 
 	var resp apiResponse
 	if err := json.NewDecoder(io.LimitReader(res.Body, maxBodyBytes)).Decode(&resp); err != nil {
-		return domain.TextPayload{}, fmt.Errorf("weather: レスポンスの decode に失敗: %w", err)
+		return domain.CanvasPayload{}, fmt.Errorf("weather: レスポンスの decode に失敗: %w", err)
 	}
 	if err := resp.Validate(); err != nil {
-		return domain.TextPayload{}, err
+		return domain.CanvasPayload{}, err
 	}
 
 	today := s.now().In(jst).Format("2006-01-02")
 	entry, err := selectToday(resp, today)
 	if err != nil {
-		return domain.TextPayload{}, err
+		return domain.CanvasPayload{}, err
 	}
 
 	// link は env(Yahoo 天気)を優先し、未設定なら API の link(気象庁)へフォールバック。
@@ -107,11 +107,11 @@ func (s *WeatherSource) Build(ctx context.Context) (domain.TextPayload, error) {
 
 	w, err := toForecast(entry, resp.Location.City, link)
 	if err != nil {
-		return domain.TextPayload{}, err
+		return domain.CanvasPayload{}, err
 	}
 
 	sig := s.now().In(jst).Format("2006年01月02日15:04")
-	return toTextPayload(w, sig), nil
+	return toCanvasPayload(w, sig), nil
 }
 
 // selectToday は forecasts から当日(実行日 JST)の要素を選ぶ。
@@ -180,24 +180,55 @@ func parseCelsius(s *string) *int {
 	return &v
 }
 
-// toTextPayload は domain.Forecast を quote/0 表示用の TextPayload へ整形する。
-// 欠損気温は "--" で表示し、title は表示幅超過時に rune 単位でクリップする。
-func toTextPayload(w domain.Forecast, signature string) domain.TextPayload {
-	dateLine := fmt.Sprintf("%s(%s)", w.Date.Format("01/02"), weekdayJP[w.Date.Weekday()])
-	tempLine := fmt.Sprintf("最低 %s℃ / 最高 %s℃", tempStr(w.TempMinC), tempStr(w.TempMaxC))
-	rainLine := fmt.Sprintf("降水 0-6 %s / 6-12 %s / 12-18 %s / 18-24 %s",
-		w.ChanceOfRain.T0006, w.ChanceOfRain.T0612, w.ChanceOfRain.T1218, w.ChanceOfRain.T1824)
+// windowData レイアウト定数。画像・カスタムフォントは使わず div/span のみで構成する
+// (実機の tw 構文が未検証のためリスクを最小化する。0005 Design Doc 参照)。
+const (
+	cardTW   = "flex flex-col w-full h-full justify-between p-4"
+	headerTW = "flex flex-col gap-1"
+	bodyTW   = "flex flex-col gap-1"
+)
 
+var (
+	titleStyle     = map[string]any{"fontSize": 28, "fontWeight": 700}
+	dateStyle      = map[string]any{"fontSize": 16}
+	tempStyle      = map[string]any{"fontSize": 18}
+	rainStyle      = map[string]any{"fontSize": 14}
+	signatureStyle = map[string]any{"fontSize": 12, "alignSelf": "flex-end"}
+)
+
+// canvasDiv は tw(レイアウト用ユーティリティ)と子要素を持つ div 要素を組み立てる。
+func canvasDiv(tw string, children ...domain.CanvasElement) domain.CanvasElement {
+	return domain.CanvasElement{Type: "div", Props: domain.CanvasElementProps{TW: tw, Children: children}}
+}
+
+// canvasSpan は style(pixel 値確定用)とテキストを持つ span 要素を組み立てる。
+func canvasSpan(text string, style map[string]any) domain.CanvasElement {
+	return domain.CanvasElement{Type: "span", Props: domain.CanvasElementProps{Style: style, Children: text}}
+}
+
+// toCanvasPayload は domain.Forecast を quote/0 Canvas API 表示用の CanvasPayload へ整形する。
+// 欠損気温は "--" で表示し、title は表示幅超過時に rune 単位でクリップする。
+func toCanvasPayload(w domain.Forecast, signature string) domain.CanvasPayload {
 	// title は「地点名 + 天気概況」。地点名が空なら telop のみへフォールバックする。
 	title := w.Telop
 	if w.City != "" {
 		title = w.City + " " + w.Telop
 	}
+	title = clipRunes(title, titleMaxRunes)
 
-	return domain.TextPayload{
-		Title:      clipRunes(title, titleMaxRunes),
-		Message:    strings.Join([]string{dateLine, tempLine, rainLine}, "\n"),
-		Signature:  signature,
+	dateLine := fmt.Sprintf("%s(%s)", w.Date.Format("01/02"), weekdayJP[w.Date.Weekday()])
+	tempLine := fmt.Sprintf("最低 %s℃ / 最高 %s℃", tempStr(w.TempMinC), tempStr(w.TempMaxC))
+	rainLine := fmt.Sprintf("降水 0-6 %s / 6-12 %s / 12-18 %s / 18-24 %s",
+		w.ChanceOfRain.T0006, w.ChanceOfRain.T0612, w.ChanceOfRain.T1218, w.ChanceOfRain.T1824)
+
+	return domain.CanvasPayload{
+		WindowData: domain.WindowData{Default: []domain.CanvasElement{
+			canvasDiv(cardTW,
+				canvasDiv(headerTW, canvasSpan(title, titleStyle), canvasSpan(dateLine, dateStyle)),
+				canvasDiv(bodyTW, canvasSpan(tempLine, tempStyle), canvasSpan(rainLine, rainStyle)),
+				canvasSpan(signature, signatureStyle),
+			),
+		}},
 		Link:       w.Link,
 		RefreshNow: true,
 	}

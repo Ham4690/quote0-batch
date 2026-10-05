@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -26,6 +27,26 @@ func loadFixture(t *testing.T, name string) apiResponse {
 		t.Fatalf("fixture の decode に失敗: %v", err)
 	}
 	return r
+}
+
+// canvasTexts は CanvasElement ツリーから span のテキストを出現順に集める。
+// toCanvasPayload が組み立てた windowData の内容を検証するためのテストヘルパ。
+func canvasTexts(e domain.CanvasElement) []string {
+	if e.Type == "span" {
+		if s, ok := e.Props.Children.(string); ok {
+			return []string{s}
+		}
+		return nil
+	}
+	children, ok := e.Props.Children.([]domain.CanvasElement)
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, c := range children {
+		out = append(out, canvasTexts(c)...)
+	}
+	return out
 }
 
 func TestSelectToday(t *testing.T) {
@@ -142,56 +163,75 @@ func TestToForecast(t *testing.T) {
 	})
 }
 
-func TestToTextPayload(t *testing.T) {
-	t.Run("toTextPayload は気温・降水確率を整形し曜日付き日付を出す", func(t *testing.T) {
+func TestToCanvasPayload(t *testing.T) {
+	t.Run("toCanvasPayload は気温・降水確率を整形し windowData ツリーを組み立てる", func(t *testing.T) {
 		r := loadFixture(t, "tokyo.json")
 		f, err := toForecast(r.Forecasts[0], r.Location.City, "https://example.test/link")
 		if err != nil {
 			t.Fatalf("予期せぬエラー: %v", err)
 		}
-		p := toTextPayload(f, "2026年07月24日00:00")
+		p := toCanvasPayload(f, "2026年07月24日00:00")
 
-		if p.Title != "東京 雨のち曇" {
-			t.Errorf("Title = %q", p.Title)
-		}
 		if !p.RefreshNow {
 			t.Error("RefreshNow = false, want true")
 		}
 		if p.Link != "https://example.test/link" {
 			t.Errorf("Link = %q", p.Link)
 		}
-		if p.Signature != "2026年07月24日00:00" {
-			t.Errorf("Signature = %q", p.Signature)
+
+		want := domain.CanvasPayload{
+			WindowData: domain.WindowData{Default: []domain.CanvasElement{
+				canvasDiv(cardTW,
+					canvasDiv(headerTW,
+						canvasSpan("東京 雨のち曇", titleStyle),
+						canvasSpan("07/24(金)", dateStyle),
+					),
+					canvasDiv(bodyTW,
+						canvasSpan("最低 26℃ / 最高 33℃", tempStyle),
+						canvasSpan("降水 0-6 10% / 6-12 20% / 12-18 40% / 18-24 50%", rainStyle),
+					),
+					canvasSpan("2026年07月24日00:00", signatureStyle),
+				),
+			}},
+			Link:       "https://example.test/link",
+			RefreshNow: true,
 		}
-		want := "07/24(金)\n最低 26℃ / 最高 33℃\n降水 0-6 10% / 6-12 20% / 12-18 40% / 18-24 50%"
-		if p.Message != want {
-			t.Errorf("Message =\n%q\nwant\n%q", p.Message, want)
+		if !reflect.DeepEqual(p, want) {
+			t.Errorf("CanvasPayload =\n%+v\nwant\n%+v", p, want)
 		}
 	})
 
-	t.Run("toTextPayload は欠損気温を -- で表示する", func(t *testing.T) {
+	t.Run("toCanvasPayload は欠損気温を -- で表示する", func(t *testing.T) {
 		r := loadFixture(t, "tokyo_null_temp.json")
 		f, err := toForecast(r.Forecasts[0], r.Location.City, "")
 		if err != nil {
 			t.Fatalf("予期せぬエラー: %v", err)
 		}
-		p := toTextPayload(f, "sig")
-		want := "07/24(金)\n最低 --℃ / 最高 --℃\n降水 0-6 --% / 6-12 --% / 12-18 --% / 18-24 50%"
-		if p.Message != want {
-			t.Errorf("Message =\n%q\nwant\n%q", p.Message, want)
+		p := toCanvasPayload(f, "sig")
+		texts := canvasTexts(p.WindowData.Default[0])
+		want := []string{
+			"東京 晴時々曇",
+			"07/24(金)",
+			"最低 --℃ / 最高 --℃",
+			"降水 0-6 --% / 6-12 --% / 12-18 --% / 18-24 50%",
+			"sig",
+		}
+		if !reflect.DeepEqual(texts, want) {
+			t.Errorf("テキスト =\n%q\nwant\n%q", texts, want)
 		}
 	})
 
-	t.Run("toTextPayload は地点名が空なら title を telop のみにする", func(t *testing.T) {
+	t.Run("toCanvasPayload は地点名が空ならタイトルを telop のみにする", func(t *testing.T) {
 		// City 欠損時のフォールバック。「地点名 + 天気概況」ではなく telop 単体になる。
 		w := domain.Forecast{
 			Date:  time.Date(2026, 7, 24, 0, 0, 0, 0, jst),
 			City:  "", // 地点名なし
 			Telop: "晴れ",
 		}
-		p := toTextPayload(w, "sig")
-		if p.Title != "晴れ" {
-			t.Errorf("Title = %q, want %q(地点名なしは telop のみ)", p.Title, "晴れ")
+		p := toCanvasPayload(w, "sig")
+		texts := canvasTexts(p.WindowData.Default[0])
+		if len(texts) == 0 || texts[0] != "晴れ" {
+			t.Errorf("タイトル = %q, want %q(地点名なしは telop のみ)", texts, "晴れ")
 		}
 	})
 }
@@ -223,11 +263,12 @@ func TestWeatherSource_Build(t *testing.T) {
 		if gotQuery != "city=130010" {
 			t.Errorf("query = %q, want city=130010", gotQuery)
 		}
-		if p.Title != "東京 雨のち曇" {
-			t.Errorf("Title = %q", p.Title)
+		texts := canvasTexts(p.WindowData.Default[0])
+		if len(texts) == 0 || texts[0] != "東京 雨のち曇" {
+			t.Errorf("タイトル = %q, want %q", texts, "東京 雨のち曇")
 		}
-		if p.Signature != "2026年07月24日00:00" {
-			t.Errorf("Signature = %q", p.Signature)
+		if last := texts[len(texts)-1]; last != "2026年07月24日00:00" {
+			t.Errorf("署名 = %q, want %q", last, "2026年07月24日00:00")
 		}
 	})
 
@@ -245,8 +286,9 @@ func TestWeatherSource_Build(t *testing.T) {
 		if err != nil {
 			t.Fatalf("予期せぬエラー: %v", err)
 		}
-		if p.Title != "晴れ" {
-			t.Errorf("Title = %q, want %q(location 欠損は telop のみ)", p.Title, "晴れ")
+		texts := canvasTexts(p.WindowData.Default[0])
+		if len(texts) == 0 || texts[0] != "晴れ" {
+			t.Errorf("タイトル = %q, want %q(location 欠損は telop のみ)", texts, "晴れ")
 		}
 	})
 
