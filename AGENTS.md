@@ -16,10 +16,10 @@ Ports & Adapters(ヘキサゴナル)構成。依存方向は常に **外側 → 
 ```
 cmd/batch/main.go       合成ルート(DI 配線 → RunBatch 実行)
 internal/
-  domain/               TextPayload 型 + ContentSource/ContentSink port(外部依存なし)
+  domain/               CanvasPayload 型 + ContentSource/ContentSink port(外部依存なし)
   application/          RunBatch ユースケース(source→sink を協調)
   adapter/in/           入力側 adapter(helloworld / M3 で weather)
-  adapter/out/          出力側 adapter(quote/0 Text API 送信)
+  adapter/out/          出力側 adapter(quote/0 Canvas API 送信)
   config/               環境変数ロード / バリデーション
 ```
 

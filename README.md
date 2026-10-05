@@ -7,7 +7,7 @@
 設計の詳細は [`docs/design-docs/0001-initial-setup.md`](docs/design-docs/0001-initial-setup.md) を参照。
 開発フロー・PR 分割方針は [`CONTRIBUTING.md`](CONTRIBUTING.md) を参照。
 
-> 現在は **M1(PoC 疎通)** の段階。固定文言 `Hello World` を Text API へ送信し、実機表示を確認する。
+> 現在は **M1(PoC 疎通)** の段階。固定文言 `Hello World` を Canvas API へ送信し、実機表示を確認する。
 > 天気連携は M3 で追加する。
 
 ## アーキテクチャ
@@ -18,10 +18,10 @@ port(interface)で抽象化し、実装を adapter として差し替え可能�
 ```
 cmd/batch/main.go       合成ルート(DI 配線 → RunBatch 実行)
 internal/
-  domain/               TextPayload 型 + ContentSource/ContentSink port(外部依存なし)
+  domain/               CanvasPayload 型 + ContentSource/ContentSink port(外部依存なし)
   application/          RunBatch ユースケース(source→sink を協調)
   adapter/in/           入力側 adapter(helloworld / M3 で weather)
-  adapter/out/          出力側 adapter(quote/0 Text API 送信)
+  adapter/out/          出力側 adapter(quote/0 Canvas API 送信)
   config/               環境変数ロード / バリデーション
 ```
 
@@ -35,7 +35,7 @@ cp .env.example .env    # 値を埋める(.env はコミット禁止)
 
 | 変数 | 内容 | 秘匿 | 既定値 |
 | --- | --- | --- | --- |
-| `DOT_API_KEY` | quote/0 Text API の Bearer トークン | Yes | なし(必須) |
+| `DOT_API_KEY` | quote/0 Canvas API の Bearer トークン | Yes | なし(必須) |
 | `SERIAL_NUM` | デバイスのシリアルナンバー | Yes | なし(必須) |
 | `DOT_BASE_URL` | API ベース URL | No | `https://dot.mindreset.tech` |
 
@@ -80,5 +80,5 @@ Actions はログを自動マスクし fork PR には secrets を注入しない
 ## 参考
 
 - [quote/0(dot.mindreset.tech)](https://dot.mindreset.tech)
-- Text API エンドポイント: `POST /api/authV2/open/device/:serialNum/text`
-- 設計判断の背景: [`docs/design-docs/0001-initial-setup.md`](docs/design-docs/0001-initial-setup.md)
+- Canvas API エンドポイント: `POST /api/authV2/open/device/:serialNum/canvas`
+- 設計判断の背景: [`docs/design-docs/0001-initial-setup.md`](docs/design-docs/0001-initial-setup.md) / [`docs/design-docs/0005-canvas-api-migration.md`](docs/design-docs/0005-canvas-api-migration.md)
