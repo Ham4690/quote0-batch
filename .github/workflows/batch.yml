@@ -1,6 +1,6 @@
 name: batch
 
-# quote/0 Text API へ実送信するワークフロー。secrets を使うため
+# quote/0 Canvas API へ実送信するワークフロー。secrets を使うため
 # workflow_dispatch / schedule のみで起動する(PR では走らせない)。
 #
 # M3(天気連携)で毎日 0 時(JST)実行に変更。当日の天気予報を表示する。
@@ -32,7 +32,7 @@ jobs:
         with:
           go-version: "1.25"
           cache: false
-      - name: send to quote/0 Text API
+      - name: send to quote/0 Canvas API
         run: go run ./cmd/batch
         env:
           DOT_API_KEY: ${{ secrets.DOT_API_KEY }}
