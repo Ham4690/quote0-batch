@@ -182,18 +182,29 @@ func parseCelsius(s *string) *int {
 
 // windowData レイアウト定数。画像・カスタムフォントは使わず div/span のみで構成する
 // (実機の tw 構文が未検証のためリスクを最小化する。0005 Design Doc 参照)。
+//
+// 降水確率は "降水 0-6 10% / 6-12 20% / ..." の単一文字列で組んでいたが、
+// 実機(296x152px)で p-4 適用後の幅 264px に収まらず折り返し、カード全体の必要高さが
+// 152px を超えて署名行が見切れる不具合があった(0005 Design Doc 参照)。
+// 見出し + 4 分割の等幅グリッド(各セル w-[25%])へ変更し、折り返し位置をブラウザ側の
+// 自動改行に委ねない構造にして解消する。
 const (
-	cardTW   = "flex flex-col w-full h-full justify-between p-4"
-	headerTW = "flex flex-col gap-1"
-	bodyTW   = "flex flex-col gap-1"
+	cardTW     = "flex flex-col w-full h-full justify-between p-2"
+	headerTW   = "flex flex-col"
+	bodyTW     = "flex flex-col gap-1"
+	rainRowTW  = "flex flex-row w-full"
+	rainCellTW = "w-[25%]"
+
+	rainLabel = "降水確率(時間帯)"
 )
 
 var (
-	titleStyle     = map[string]any{"fontSize": 28, "fontWeight": 700}
-	dateStyle      = map[string]any{"fontSize": 16}
-	tempStyle      = map[string]any{"fontSize": 18}
-	rainStyle      = map[string]any{"fontSize": 14}
-	signatureStyle = map[string]any{"fontSize": 12, "alignSelf": "flex-end"}
+	titleStyle     = map[string]any{"fontSize": 22, "fontWeight": 700}
+	dateStyle      = map[string]any{"fontSize": 12}
+	tempStyle      = map[string]any{"fontSize": 14}
+	rainLabelStyle = map[string]any{"fontSize": 9, "fontWeight": 600}
+	rainCellStyle  = map[string]any{"fontSize": 10}
+	signatureStyle = map[string]any{"fontSize": 9, "alignSelf": "flex-end"}
 )
 
 // canvasDiv は tw(レイアウト用ユーティリティ)と子要素を持つ div 要素を組み立てる。
@@ -204,6 +215,12 @@ func canvasDiv(tw string, children ...domain.CanvasElement) domain.CanvasElement
 // canvasSpan は style(pixel 値確定用)とテキストを持つ span 要素を組み立てる。
 func canvasSpan(text string, style map[string]any) domain.CanvasElement {
 	return domain.CanvasElement{Type: "span", Props: domain.CanvasElementProps{Style: style, Children: text}}
+}
+
+// canvasRainCell は降水確率グリッドの1セル(幅固定 w-[25%])を組み立てる。
+// 幅を文字量に関わらず固定することで、セル内改行の有無をブラウザの自動折り返しに委ねない。
+func canvasRainCell(text string) domain.CanvasElement {
+	return domain.CanvasElement{Type: "span", Props: domain.CanvasElementProps{TW: rainCellTW, Style: rainCellStyle, Children: text}}
 }
 
 // toCanvasPayload は domain.Forecast を quote/0 Canvas API 表示用の CanvasPayload へ整形する。
@@ -218,14 +235,21 @@ func toCanvasPayload(w domain.Forecast, signature string) domain.CanvasPayload {
 
 	dateLine := fmt.Sprintf("%s(%s)", w.Date.Format("01/02"), weekdayJP[w.Date.Weekday()])
 	tempLine := fmt.Sprintf("最低 %s℃ / 最高 %s℃", tempStr(w.TempMinC), tempStr(w.TempMaxC))
-	rainLine := fmt.Sprintf("降水 0-6 %s / 6-12 %s / 12-18 %s / 18-24 %s",
-		w.ChanceOfRain.T0006, w.ChanceOfRain.T0612, w.ChanceOfRain.T1218, w.ChanceOfRain.T1824)
 
 	return domain.CanvasPayload{
 		WindowData: domain.WindowData{Default: []domain.CanvasElement{
 			canvasDiv(cardTW,
 				canvasDiv(headerTW, canvasSpan(title, titleStyle), canvasSpan(dateLine, dateStyle)),
-				canvasDiv(bodyTW, canvasSpan(tempLine, tempStyle), canvasSpan(rainLine, rainStyle)),
+				canvasDiv(bodyTW,
+					canvasSpan(tempLine, tempStyle),
+					canvasSpan(rainLabel, rainLabelStyle),
+					canvasDiv(rainRowTW,
+						canvasRainCell("0-6時 "+w.ChanceOfRain.T0006),
+						canvasRainCell("6-12時 "+w.ChanceOfRain.T0612),
+						canvasRainCell("12-18時 "+w.ChanceOfRain.T1218),
+						canvasRainCell("18-24時 "+w.ChanceOfRain.T1824),
+					),
+				),
 				canvasSpan(signature, signatureStyle),
 			),
 		}},
