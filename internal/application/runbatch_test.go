@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/Ham4690/quote0-batch/internal/domain"
@@ -10,24 +11,24 @@ import (
 
 // fakeSource は ContentSource のテスト用フェイク。
 type fakeSource struct {
-	payload domain.TextPayload
+	payload domain.CanvasPayload
 	err     error
 	called  bool
 }
 
-func (f *fakeSource) Build(ctx context.Context) (domain.TextPayload, error) {
+func (f *fakeSource) Build(ctx context.Context) (domain.CanvasPayload, error) {
 	f.called = true
 	return f.payload, f.err
 }
 
 // fakeSink は ContentSink のテスト用フェイク。受け取った payload を記録する。
 type fakeSink struct {
-	got    domain.TextPayload
+	got    domain.CanvasPayload
 	called bool
 	err    error
 }
 
-func (f *fakeSink) Send(ctx context.Context, p domain.TextPayload) error {
+func (f *fakeSink) Send(ctx context.Context, p domain.CanvasPayload) error {
 	f.called = true
 	f.got = p
 	return f.err
@@ -35,7 +36,7 @@ func (f *fakeSink) Send(ctx context.Context, p domain.TextPayload) error {
 
 func TestRunBatch_PassesPayloadFromSourceToSink(t *testing.T) {
 	t.Run("RunBatch は source が生成した payload を sink に渡す", func(t *testing.T) {
-		want := domain.TextPayload{Title: "Hello World", Message: "Hello\nWorld", RefreshNow: true}
+		want := domain.CanvasPayload{RefreshNow: true}
 		src := &fakeSource{payload: want}
 		sink := &fakeSink{}
 
@@ -48,7 +49,7 @@ func TestRunBatch_PassesPayloadFromSourceToSink(t *testing.T) {
 		if !sink.called {
 			t.Error("sink.Send が呼ばれていない")
 		}
-		if sink.got != want {
+		if !reflect.DeepEqual(sink.got, want) {
 			t.Errorf("sink が受け取った payload = %+v, want %+v", sink.got, want)
 		}
 	})
@@ -73,7 +74,7 @@ func TestRunBatch_SourceErrorStopsBeforeSink(t *testing.T) {
 func TestRunBatch_SinkErrorPropagates(t *testing.T) {
 	t.Run("RunBatch は sink のエラーを呼び出し元へ伝播する", func(t *testing.T) {
 		sinkErr := errors.New("send failed")
-		src := &fakeSource{payload: domain.TextPayload{Title: "x"}}
+		src := &fakeSource{payload: domain.CanvasPayload{}}
 		sink := &fakeSink{err: sinkErr}
 
 		err := RunBatch(context.Background(), src, sink)
