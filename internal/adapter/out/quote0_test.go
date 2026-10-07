@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -41,14 +42,22 @@ func TestQuote0Sink_Send_Success(t *testing.T) {
 		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			captured = req
 			capturedBody, _ = io.ReadAll(req.Body)
-			return newResponse(http.StatusOK, `{"message":"Device SN000112345678 text API content switched."}`), nil
+			return newResponse(http.StatusOK, `{"message":"Device SN000112345678 Canvas API content switched."}`), nil
 		})}
 
 		sink := NewQuote0Sink(testConfig(), client)
-		payload := domain.TextPayload{
-			Title:      "Hello World",
-			Message:    "Hello\nWorld",
-			Signature:  "2026年07月12日09:00",
+		payload := domain.CanvasPayload{
+			WindowData: domain.WindowData{Default: []domain.CanvasElement{
+				{Type: "div", Props: domain.CanvasElementProps{
+					TW: "flex flex-col w-full h-full justify-between p-4",
+					Children: []domain.CanvasElement{
+						{Type: "span", Props: domain.CanvasElementProps{
+							Style:    map[string]any{"fontSize": float64(28)},
+							Children: "Hello World",
+						}},
+					},
+				}},
+			}},
 			Link:       "https://www.yahoo.co.jp/",
 			RefreshNow: true,
 		}
@@ -61,7 +70,7 @@ func TestQuote0Sink_Send_Success(t *testing.T) {
 		if captured.Method != http.MethodPost {
 			t.Errorf("Method = %q, want POST", captured.Method)
 		}
-		wantURL := "https://dot.mindreset.tech/api/authV2/open/device/SN000112345678/text"
+		wantURL := "https://dot.mindreset.tech/api/authV2/open/device/SN000112345678/canvas"
 		if got := captured.URL.String(); got != wantURL {
 			t.Errorf("URL = %q, want %q", got, wantURL)
 		}
@@ -75,12 +84,22 @@ func TestQuote0Sink_Send_Success(t *testing.T) {
 		}
 
 		// body が payload と一致するか検証する。
-		var sent domain.TextPayload
-		if err := json.Unmarshal(capturedBody, &sent); err != nil {
+		// CanvasElementProps.Children は any のため、型付き struct へ decode すると
+		// []domain.CanvasElement には戻らない([]interface{} になる)。
+		// 両辺を map[string]any に decode してから比較する。
+		wantJSON, err := json.Marshal(payload)
+		if err != nil {
+			t.Fatalf("payload の marshal に失敗: %v", err)
+		}
+		var want, got map[string]any
+		if err := json.Unmarshal(wantJSON, &want); err != nil {
+			t.Fatalf("want の unmarshal に失敗: %v", err)
+		}
+		if err := json.Unmarshal(capturedBody, &got); err != nil {
 			t.Fatalf("送信 body の unmarshal に失敗: %v", err)
 		}
-		if sent != payload {
-			t.Errorf("送信 body = %+v, want %+v", sent, payload)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("送信 body = %+v, want %+v", got, want)
 		}
 		// refreshNow が明示的に含まれるか(false でも送れる設計)。
 		if !strings.Contains(string(capturedBody), `"refreshNow"`) {
@@ -98,7 +117,7 @@ func TestQuote0Sink_Send_Non2xxReturnsError(t *testing.T) {
 			})}
 			sink := NewQuote0Sink(testConfig(), client)
 
-			err := sink.Send(context.Background(), domain.TextPayload{Title: "x"})
+			err := sink.Send(context.Background(), domain.CanvasPayload{})
 			if err == nil {
 				t.Errorf("status=%d でエラーを期待したが nil", status)
 			}
@@ -113,7 +132,7 @@ func TestQuote0Sink_Send_ErrorDoesNotLeakSecrets(t *testing.T) {
 		})}
 		sink := NewQuote0Sink(testConfig(), client)
 
-		err := sink.Send(context.Background(), domain.TextPayload{Title: "x"})
+		err := sink.Send(context.Background(), domain.CanvasPayload{})
 		if err == nil {
 			t.Fatal("エラーを期待したが nil")
 		}
