@@ -188,12 +188,20 @@ func parseCelsius(s *string) *int {
 // 152px を超えて署名行が見切れる不具合があった(0005 Design Doc 参照)。
 // 見出し + 4 分割の等幅グリッド(各セル w-[25%])へ変更し、折り返し位置をブラウザ側の
 // 自動改行に委ねない構造にして解消する。
+//
+// 上記修正で導入した 9-10px の通常フォント(ベクター)は、実機の低解像度 1bit(白黒)
+// レンダリングでアンチエイリアスが効かず文字が潰れて判読できなくなった。公式ドキュメント
+// 記載のピクセルフォント(低解像度ディスプレイ向けのビットマップフォント、tw クラス名
+// "text-pixel-{size}[-variant]" で指定)に切り替え、小サイズ表示の視認性を改善する。
+// サイズは pixel 値そのままではなくフォント側のバリアント単位(8/10/12-zpix/16-unifont 等)
+// のため、style.fontSize は指定せず tw 側にサイズを委ねる。
 const (
 	cardTW     = "flex flex-col w-full h-full justify-between p-2"
 	headerTW   = "flex flex-col"
 	bodyTW     = "flex flex-col gap-1"
 	rainRowTW  = "flex flex-row w-full"
-	rainCellTW = "w-[25%]"
+	rainCellTW = "w-[25%] text-pixel-10"
+	smallTW    = "text-pixel-10" // 降水確率見出し・署名など、潰れ対策でピクセルフォントへ切り替える小サイズ表示に使う
 
 	rainLabel = "降水確率(時間帯)"
 )
@@ -202,9 +210,7 @@ var (
 	titleStyle     = map[string]any{"fontSize": 22, "fontWeight": 700}
 	dateStyle      = map[string]any{"fontSize": 12}
 	tempStyle      = map[string]any{"fontSize": 14}
-	rainLabelStyle = map[string]any{"fontSize": 9, "fontWeight": 600}
-	rainCellStyle  = map[string]any{"fontSize": 10}
-	signatureStyle = map[string]any{"fontSize": 9, "alignSelf": "flex-end"}
+	signatureStyle = map[string]any{"alignSelf": "flex-end"}
 )
 
 // canvasDiv は tw(レイアウト用ユーティリティ)と子要素を持つ div 要素を組み立てる。
@@ -214,13 +220,24 @@ func canvasDiv(tw string, children ...domain.CanvasElement) domain.CanvasElement
 
 // canvasSpan は style(pixel 値確定用)とテキストを持つ span 要素を組み立てる。
 func canvasSpan(text string, style map[string]any) domain.CanvasElement {
-	return domain.CanvasElement{Type: "span", Props: domain.CanvasElementProps{Style: style, Children: text}}
+	return canvasSpanFull("", style, text)
 }
 
-// canvasRainCell は降水確率グリッドの1セル(幅固定 w-[25%])を組み立てる。
+// canvasSpanTW は tw(カスタムフォント指定等のクラス)とテキストを持つ span 要素を組み立てる。
+// style を使う canvasSpan と異なり、サイズ等をフォント側のバリアント(例: ピクセルフォント)に委ねる。
+func canvasSpanTW(tw, text string) domain.CanvasElement {
+	return canvasSpanFull(tw, nil, text)
+}
+
+// canvasSpanFull は tw と style を両方持つ span 要素を組み立てる(例: 幅固定 + ピクセルフォント指定)。
+func canvasSpanFull(tw string, style map[string]any, text string) domain.CanvasElement {
+	return domain.CanvasElement{Type: "span", Props: domain.CanvasElementProps{TW: tw, Style: style, Children: text}}
+}
+
+// canvasRainCell は降水確率グリッドの1セル(幅固定 w-[25%] + ピクセルフォント)を組み立てる。
 // 幅を文字量に関わらず固定することで、セル内改行の有無をブラウザの自動折り返しに委ねない。
 func canvasRainCell(text string) domain.CanvasElement {
-	return domain.CanvasElement{Type: "span", Props: domain.CanvasElementProps{TW: rainCellTW, Style: rainCellStyle, Children: text}}
+	return canvasSpanTW(rainCellTW, text)
 }
 
 // toCanvasPayload は domain.Forecast を quote/0 Canvas API 表示用の CanvasPayload へ整形する。
@@ -242,7 +259,7 @@ func toCanvasPayload(w domain.Forecast, signature string) domain.CanvasPayload {
 				canvasDiv(headerTW, canvasSpan(title, titleStyle), canvasSpan(dateLine, dateStyle)),
 				canvasDiv(bodyTW,
 					canvasSpan(tempLine, tempStyle),
-					canvasSpan(rainLabel, rainLabelStyle),
+					canvasSpanTW(smallTW, rainLabel),
 					canvasDiv(rainRowTW,
 						canvasRainCell("0-6時 "+w.ChanceOfRain.T0006),
 						canvasRainCell("6-12時 "+w.ChanceOfRain.T0612),
@@ -250,7 +267,7 @@ func toCanvasPayload(w domain.Forecast, signature string) domain.CanvasPayload {
 						canvasRainCell("18-24時 "+w.ChanceOfRain.T1824),
 					),
 				),
-				canvasSpan(signature, signatureStyle),
+				canvasSpanFull(smallTW, signatureStyle, signature),
 			),
 		}},
 		Link:       w.Link,

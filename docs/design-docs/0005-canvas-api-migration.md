@@ -3,7 +3,7 @@
 - **Author:** Arata Higashiguchi
 - **Status:** Draft
 - **Created:** 2026-10-06
-- **Last Updated:** 2026-10-07
+- **Last Updated:** 2026-10-07（ピクセルフォント切替反映）
 - **Reviewers:** TBD
 - **関連:** [0001 初期構築 Design Doc](./0001-initial-setup.md) / [0002 M3 天気連携 Design Doc](./0002-weather-integration.md)
 
@@ -126,7 +126,9 @@ type ContentSink interface {
 
 構成: 縦方向カード。ヘッダ（タイトル + 日付）／本文（気温 + 降水確率見出し + 4 分割グリッド）／右下寄せの署名、という 3 ブロック構成で [0002](./0002-weather-integration.md) の表示項目を維持する。
 
-> **初版（見切れ不具合）からの変更:** 初版は降水確率を `"降水 0-6 10% / 6-12 20% / ..."` という単一の連結文字列で組んでいた。ブラウザでの近似レンダリング確認（[Verification](#verification実装-pr-側のチェックリスト)参照）の結果、画面幅 296px・`p-4` 適用後の実効幅 264px に対しこの文字列が1行に収まらず折り返し、カード全体の必要高さが 174px となって 152px の枠を 22px超過、署名行が画面外に押し出されることが判明した。対策として、(1) `p-4` → `p-2` で余白を削減、(2) 主要フォントサイズを縮小（title 28→22 / date 16→12 / temp 18→14）、(3) 降水確率を「降水確率(時間帯)」の見出し span + 4 分割の等幅グリッド（各セル `w-[25%]` 固定・`fontSize:10`）に変更し、セル内改行の有無をブラウザの自動折り返しに委ねない構造にした。ブラウザ近似レンダリングでの実測ではオーバーフロー 0px（安全マージン 17px 超）。
+> **初版（見切れ不具合）からの変更:** 初版は降水確率を `"降水 0-6 10% / 6-12 20% / ..."` という単一の連結文字列で組んでいた。ブラウザでの近似レンダリング確認（[Verification](#verification実装-pr-側のチェックリスト)参照）の結果、画面幅 296px・`p-4` 適用後の実効幅 264px に対しこの文字列が1行に収まらず折り返し、カード全体の必要高さが 174px となって 152px の枠を 22px超過、署名行が画面外に押し出されることが判明した。対策として、(1) `p-4` → `p-2` で余白を削減、(2) 主要フォントサイズを縮小（title 28→22 / date 16→12 / temp 18→14）、(3) 降水確率を「降水確率(時間帯)」の見出し span + 4 分割の等幅グリッド（各セル `w-[25%]` 固定）に変更し、セル内改行の有無をブラウザの自動折り返しに委ねない構造にした。ブラウザ近似レンダリングでの実測ではオーバーフロー 0px（安全マージン 17px 超）。
+>
+> **実機確認後の追加変更（文字潰れ対策）:** 上記修正で 9-10px まで縮小した通常フォント（ベクター）を実機（降水確率グリッド・署名）で表示したところ、実機の低解像度 1bit（白黒）レンダリングでアンチエイリアスが効かず文字が潰れて判読できないとユーザー報告があった。公式ドキュメントに記載のピクセルフォント（低解像度ディスプレイ向けビットマップフォント、`tw` クラス `text-pixel-{size}[-variant]` で指定、`text-pixel-8`/`text-pixel-10`/`text-pixel-12-zpix`/`text-pixel-16-unifont` 等のバリアントのみ存在）に切り替えた。サイズはフォント側のバリアント単位で決まるため `style.fontSize` は指定せず `tw` 側にサイズを委ねる（降水確率グリッド・見出し・署名は `text-pixel-10` に統一）。ブラウザはこのカスタムフォントをレンダリングできないため見た目の事前確認はできず、効果は実機でのみ検証可能（[Open Questions](#open-questions)）。
 
 `testdata/tokyo.json`（東京・雨のち曇・最低26/最高33・降水10/20/40/50・link=JMA・署名=2026年07月24日00:00）を例にした実際の送信 JSON:
 
@@ -155,23 +157,23 @@ type ContentSink interface {
                 "tw": "flex flex-col gap-1",
                 "children": [
                   { "type": "span", "props": { "style": { "fontSize": 14 }, "children": "最低 26℃ / 最高 33℃" } },
-                  { "type": "span", "props": { "style": { "fontSize": 9, "fontWeight": 600 }, "children": "降水確率(時間帯)" } },
+                  { "type": "span", "props": { "tw": "text-pixel-10", "children": "降水確率(時間帯)" } },
                   {
                     "type": "div",
                     "props": {
                       "tw": "flex flex-row w-full",
                       "children": [
-                        { "type": "span", "props": { "tw": "w-[25%]", "style": { "fontSize": 10 }, "children": "0-6時 10%" } },
-                        { "type": "span", "props": { "tw": "w-[25%]", "style": { "fontSize": 10 }, "children": "6-12時 20%" } },
-                        { "type": "span", "props": { "tw": "w-[25%]", "style": { "fontSize": 10 }, "children": "12-18時 40%" } },
-                        { "type": "span", "props": { "tw": "w-[25%]", "style": { "fontSize": 10 }, "children": "18-24時 50%" } }
+                        { "type": "span", "props": { "tw": "w-[25%] text-pixel-10", "children": "0-6時 10%" } },
+                        { "type": "span", "props": { "tw": "w-[25%] text-pixel-10", "children": "6-12時 20%" } },
+                        { "type": "span", "props": { "tw": "w-[25%] text-pixel-10", "children": "12-18時 40%" } },
+                        { "type": "span", "props": { "tw": "w-[25%] text-pixel-10", "children": "18-24時 50%" } }
                       ]
                     }
                   }
                 ]
               }
             },
-            { "type": "span", "props": { "style": { "fontSize": 9, "alignSelf": "flex-end" }, "children": "2026年07月24日00:00" } }
+            { "type": "span", "props": { "tw": "text-pixel-10", "style": { "alignSelf": "flex-end" }, "children": "2026年07月24日00:00" } }
           ]
         }
       }
@@ -192,7 +194,8 @@ const (
 	headerTW   = "flex flex-col"
 	bodyTW     = "flex flex-col gap-1"
 	rainRowTW  = "flex flex-row w-full"
-	rainCellTW = "w-[25%]"
+	rainCellTW = "w-[25%] text-pixel-10"
+	smallTW    = "text-pixel-10" // 文字潰れ対策で低解像度向けピクセルフォントへ切り替える小サイズ表示に使う
 
 	rainLabel = "降水確率(時間帯)"
 )
@@ -201,9 +204,7 @@ var (
 	titleStyle     = map[string]any{"fontSize": 22, "fontWeight": 700}
 	dateStyle      = map[string]any{"fontSize": 12}
 	tempStyle      = map[string]any{"fontSize": 14}
-	rainLabelStyle = map[string]any{"fontSize": 9, "fontWeight": 600}
-	rainCellStyle  = map[string]any{"fontSize": 10}
-	signatureStyle = map[string]any{"fontSize": 9, "alignSelf": "flex-end"}
+	signatureStyle = map[string]any{"alignSelf": "flex-end"}
 )
 
 func canvasDiv(tw string, children ...domain.CanvasElement) domain.CanvasElement {
@@ -211,12 +212,22 @@ func canvasDiv(tw string, children ...domain.CanvasElement) domain.CanvasElement
 }
 
 func canvasSpan(text string, style map[string]any) domain.CanvasElement {
-	return domain.CanvasElement{Type: "span", Props: domain.CanvasElementProps{Style: style, Children: text}}
+	return canvasSpanFull("", style, text)
 }
 
-// canvasRainCell は降水確率グリッドの1セル(幅固定 w-[25%])を組み立てる。
+// canvasSpanTW は tw(カスタムフォント指定等)とテキストを持つ span を組み立てる。
+func canvasSpanTW(tw, text string) domain.CanvasElement {
+	return canvasSpanFull(tw, nil, text)
+}
+
+// canvasSpanFull は tw と style を両方持つ span を組み立てる(例: 幅固定 + ピクセルフォント指定)。
+func canvasSpanFull(tw string, style map[string]any, text string) domain.CanvasElement {
+	return domain.CanvasElement{Type: "span", Props: domain.CanvasElementProps{TW: tw, Style: style, Children: text}}
+}
+
+// canvasRainCell は降水確率グリッドの1セル(幅固定 w-[25%] + ピクセルフォント)を組み立てる。
 func canvasRainCell(text string) domain.CanvasElement {
-	return domain.CanvasElement{Type: "span", Props: domain.CanvasElementProps{TW: rainCellTW, Style: rainCellStyle, Children: text}}
+	return canvasSpanTW(rainCellTW, text)
 }
 
 // toCanvasPayload は domain.Forecast を Canvas API 表示用の CanvasPayload へ整形する。
@@ -236,7 +247,7 @@ func toCanvasPayload(w domain.Forecast, signature string) domain.CanvasPayload {
 				canvasDiv(headerTW, canvasSpan(title, titleStyle), canvasSpan(dateLine, dateStyle)),
 				canvasDiv(bodyTW,
 					canvasSpan(tempLine, tempStyle),
-					canvasSpan(rainLabel, rainLabelStyle),
+					canvasSpanTW(smallTW, rainLabel),
 					canvasDiv(rainRowTW,
 						canvasRainCell("0-6時 "+w.ChanceOfRain.T0006),
 						canvasRainCell("6-12時 "+w.ChanceOfRain.T0612),
@@ -244,7 +255,7 @@ func toCanvasPayload(w domain.Forecast, signature string) domain.CanvasPayload {
 						canvasRainCell("18-24時 "+w.ChanceOfRain.T1824),
 					),
 				),
-				canvasSpan(signature, signatureStyle),
+				canvasSpanFull(smallTW, signatureStyle, signature),
 			),
 		}},
 		Link:       w.Link,
@@ -336,7 +347,7 @@ Text API での表示（`title`/`message`/`signature`/`link`）をそのまま�
      -H "Content-Type: application/json" \
      -d @payload.json
    ```
-   で 200 応答と実機での表示崩れ（画面からの溢れ・フォントサイズの過不足）がないことを確認する。結果は本 doc の Resolved Decisions に追記する。
+   で 200 応答と実機での表示崩れ（画面からの溢れ・フォントサイズの過不足・`text-pixel-10` 切替後の文字の判読可否）がないことを確認する。結果は本 doc の Resolved Decisions に追記する。
 
 ---
 
@@ -345,12 +356,14 @@ Text API での表示（`title`/`message`/`signature`/`link`）をそのまま�
 - **移行方針**: Text API を完全に置換する。並存モードは設けない（ユーザー決定）。
 - **レイアウト方針**: 既存表示の pixel 再現は要求せず、新規デザインとする（ユーザー決定）。画像・カスタムフォントは使わず `div`/`span` のみで構成し、`tw` は基本レイアウト用途に限定、pixel 値指定は `style` に委ねる。
 - **降水確率レイアウト（見切れ修正）**: 初版の単一連結文字列は実機幅で折り返し、カード下部（署名）が見切れる不具合があった。ブラウザでの近似レンダリング確認により原因特定し、「降水確率(時間帯)」見出し + 4 分割等幅グリッド（セル幅固定 `w-[25%]`）へ変更して解消（実測オーバーフロー 0px）。あわせて `p-4`→`p-2`、主要フォントサイズを縮小。
+- **小サイズ表示のフォント（文字潰れ対策）**: 見切れ修正で 9-10px まで縮小した通常フォントを実機で表示したところ、文字が潰れて判読できないとユーザー報告があった（ユーザー決定: 低解像度向けピクセルフォントへの切替を優先検証）。降水確率グリッド・見出し・署名を `text-pixel-10`（`tw` クラス指定、`style.fontSize` は使わない）に変更。効果は実機未検証（[Open Questions](#open-questions)）。
 - **デバイス側テンプレート機能**: 使用しない。値は全て Go 側で事前計算した文字列として埋め込む。
 
 ## Open Questions
 
 - 実機の正確な pixel 寸法。Image API ドキュメント記載値（296×152px）をブラウザでの近似レンダリング確認に転用しているが、Canvas API 自体のドキュメントには寸法記載がなく、実機確定ではない。
 - 実機で有効な `tw` 構文・フォント名の全体像（公式ドキュメントに記載のカスタムフォント `text-{size}-{font}` / `text-pixel-{size}` が実機でどこまで利用可能か）。ブラウザ近似レンダリングは `flex`/`gap`/`padding`/`justify`/`w-[...]` 等の主要クラスのみ簡易解釈しており、実機の `tw` パーサ・フォントレンダリングとの一致は未検証。
+- **`text-pixel-10` 切替の実機効果**: 文字潰れ対策として降水確率グリッド・見出し・署名を `text-pixel-10` に変更したが、ブラウザはこのカスタムフォントをレンダリングできないため事前確認ができていない。実機で (1) 判読可能な太さ・輪郭になるか、(2) `w-[25%]` セル幅内で文字列が折り返さず収まるか（ピクセルフォントは等幅ビットマップの可能性があり、ブラウザでの近似幅と実際の文字幅が異なりうる）を確認する必要がある。
 - Canvas API のエラーレスポンスの JSON 形式（不明な `type`/`props` 等を送った場合のエラー構造）。
 
 いずれも実機への手動確認（[Verification](#verification実装-pr-側のチェックリスト)）で解消し、結果を本 doc に追記する。
