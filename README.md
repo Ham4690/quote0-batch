@@ -81,4 +81,5 @@ Actions はログを自動マスクし fork PR には secrets を注入しない
 
 - [quote/0(dot.mindreset.tech)](https://dot.mindreset.tech)
 - Canvas API エンドポイント: `POST /api/authV2/open/device/:serialNum/canvas`
+- Canvas 表示プレビュー(送信前の見切れ確認ツール): [GitHub Pages](https://ham4690.github.io/quote0-canvas-preview/) / [リポジトリ](https://github.com/Ham4690/quote0-canvas-preview)
 - 設計判断の背景: [`docs/design-docs/0001-initial-setup.md`](docs/design-docs/0001-initial-setup.md) / [`docs/design-docs/0005-canvas-api-migration.md`](docs/design-docs/0005-canvas-api-migration.md)
