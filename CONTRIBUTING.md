@@ -18,7 +18,7 @@ Design Doc のマイルストーン（M1/M2/M3…）とセクションを PR ス
 
 - PR1: プロジェクト骨組み（`go.mod` / ディレクトリ / `internal/config` /
   `internal/domain` port / `internal/application` RunBatch + テスト）
-- PR2: adapter 実装（`adapter/in/helloworld` / `adapter/out/quote0` + httptest テスト）
+- PR2: adapter 実装（`adapter/in/weather` / `adapter/out/quote0` + httptest テスト）
   + `cmd/batch/main.go` 配線
 - PR3: CI/CD（`.github/workflows/ci.yml` / `batch.yml`）+ `README.md`
 
@@ -42,6 +42,7 @@ Design Doc のマイルストーン（M1/M2/M3…）とセクションを PR ス
 
 - PR / push で `ci.yml`（golangci-lint + `go test ./...`）が走る。secrets 不要。
 - 実送信ワークフロー `batch.yml` は secrets を使う → `workflow_dispatch` / `schedule` のみ。
+- `claude.yml` は issue / PR の `@claude` メンションで起動する（secret `CLAUDE_CODE_OAUTH_TOKEN`）。
 - CI green を merge 必須条件とする（ブランチ保護推奨）。
 
 ## secret / 環境変数
