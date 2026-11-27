@@ -7,7 +7,7 @@ LLM / 自動化エージェントがこのリポジトリで作業する際の�
 ## プロジェクト概要
 
 [quote/0](https://dot.mindreset.tech)(e-ink スマートディスプレイ)へ外部コンテンツを定期整形して
-表示するバッチ処理基盤。Go 1.25 / 標準ライブラリ中心。現在は M1(PoC 疎通)段階。
+表示するバッチ処理基盤。Go 1.25 / 標準ライブラリ中心。現在は M3(天気連携)まで実装済み。
 
 ## アーキテクチャ
 
@@ -16,10 +16,10 @@ Ports & Adapters(ヘキサゴナル)構成。依存方向は常に **外側 → 
 ```
 cmd/batch/main.go       合成ルート(DI 配線 → RunBatch 実行)
 internal/
-  domain/               CanvasPayload 型 + ContentSource/ContentSink port(外部依存なし)
+  domain/               canvas.go / content.go(port)/ weather.go(外部依存なし)
   application/          RunBatch ユースケース(source→sink を協調)
-  adapter/in/           入力側 adapter(helloworld / M3 で weather)
-  adapter/out/          出力側 adapter(quote/0 Canvas API 送信)
+  adapter/in/weather/   天気 API → Forecast → Canvas windowData 組み立て
+  adapter/out/          出力側 adapter(quote0.go: Canvas API 送信)
   config/               環境変数ロード / バリデーション
 ```
 
