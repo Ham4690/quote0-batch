@@ -1,0 +1,2 @@
+# 空 issue を禁止し、テンプレート経由に統一する(エージェントが読む入力の品質を揃えるため)。
+blank_issues_enabled: false

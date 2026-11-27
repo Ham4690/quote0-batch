@@ -1,0 +1,68 @@
+name: 機能追加 / 改善
+description: 新機能・既存機能の改善を依頼する(エージェントが PR を作成する前提)
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        この issue は **Claude / Codex が読んで PR を作る入力**になります。曖昧さを残さず、
+        「何を・どこまで・どう確認するか」を書いてください。
+        実装の依頼は issue コメントに `@claude` または `@codex` と書いて行います。
+        規約の一次情報は [AGENTS.md](https://github.com/Ham4690/quote0-batch/blob/main/AGENTS.md) です。
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景 / 目的
+      description: なぜ必要か。誰の / どの課題を解決するか。
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: 要件(やること)
+      description: 振る舞いを箇条書きで。入力・出力・表示内容など具体的に。
+      placeholder: |
+        - 〜のとき〜を表示する
+        - 設定は環境変数 `XXX` で切り替える
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: スコープ外(やらないこと)
+      description: 1 PR = 1 関心事のため、含めない範囲を明示する。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ条件
+      description: 完了と判断できる条件。テストで検証できる形が望ましい。
+      placeholder: |
+        - [ ] 〜のテストが追加されている
+        - [ ] go build / test / vet / gofmt / golangci-lint が green
+    validations:
+      required: true
+  - type: input
+    id: design-doc
+    attributes:
+      label: 対応する Design Doc
+      description: |
+        `docs/design-docs/` の既存ファイル/セクションへのリンク。
+        無い場合は「なし(Design Doc の追加から行う)」と書く(Design Doc が先、実装が後)。
+      placeholder: docs/design-docs/0002-weather-integration.md#...
+    validations:
+      required: true
+  - type: textarea
+    id: hints
+    attributes:
+      label: 実装ヒント / 影響範囲(任意)
+      description: 関連パッケージ・ファイル、参考リンク、アーキテクチャ上の注意(依存方向は外側→内側)。
+  - type: checkboxes
+    id: secret-check
+    attributes:
+      label: 確認
+      options:
+        - label: DOT_API_KEY / SERIAL_NUM など秘匿情報を本文・ログに貼っていない
+          required: true
