@@ -1,0 +1,37 @@
+name: ドキュメント / 保守タスク
+description: docs・CI・依存更新・リファクタなど、機能変更を伴わない作業を依頼する
+title: "chore: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        実装の依頼は issue コメントに `@claude` または `@codex` と書いて行います。
+        コミット種別は Conventional Commits(`docs:` / `chore:` / `refactor:` / `ci:` など)に合わせてください。
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 目的 / 背景
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 作業内容
+      placeholder: |
+        - [ ] README の〜を M3 に合わせて更新
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: スコープ外
+      description: 1 PR = 1 関心事のため、含めない範囲を明示する。
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 確認方法
+      description: 完了の確認手順(テスト・目視・CI green など)。
+    validations:
+      required: true

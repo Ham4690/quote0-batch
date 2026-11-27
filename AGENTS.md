@@ -33,6 +33,15 @@ internal/
 - **1 PR = 1 関心事**。ついで修正は別 PR に分ける。
 - 詳細な PR 分割方針・レビュー観点は [`CONTRIBUTING.md`](CONTRIBUTING.md) を参照。
 
+## issue 駆動(issue を入力に PR を作る場合)
+
+- issue は `.github/ISSUE_TEMPLATE/`(機能追加 / 不具合 / 保守)の項目に沿って書く。
+  API・Action による自動起票も同じ見出し(背景 / 要件 / スコープ外 / 受け入れ条件 / 対応 Design Doc)で本文を作る。
+- エージェントは issue の「スコープ外」を実装しない。要件に不明点があれば推測で実装せず、issue コメントで質問する。
+- PR 本文に `Closes #<issue番号>` と対応 Design Doc へのリンクを含める。
+- 実装の依頼は issue コメントで `@claude`(または `@codex`)とメンションして行う。
+  issue 本文・タイトルに `@claude` を書くと作成時点で起動するため、起票時は書かない。
+
 ## ビルド / テスト / 静的解析
 
 作業完了前に以下がすべて green であることを確認する。

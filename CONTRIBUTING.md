@@ -44,6 +44,12 @@ Design Doc のマイルストーン（M1/M2/M3…）とセクションを PR ス
 - 実送信ワークフロー `batch.yml` は secrets を使う → `workflow_dispatch` / `schedule` のみ。
 - CI green を merge 必須条件とする（ブランチ保護推奨）。
 
+## issue テンプレート
+
+- `.github/ISSUE_TEMPLATE/` に機能追加(`feature.yml`)/ 不具合(`bug.yml`)/ 保守(`chore.yml`)の Issue Form がある。
+- スコープ外・受け入れ条件・対応 Design Doc を必須入力とし、エージェントが PR を作る際の入力品質を揃える。
+- 運用ルールは [`AGENTS.md`](AGENTS.md) の「issue 駆動」を参照。
+
 ## secret / 環境変数
 
 - 秘匿情報はコミットしない。ローカルは `.env`（gitignore 対象）、CI は GitHub Secrets。
